@@ -2,5 +2,13 @@
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
     "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY2Q0UwNEZFN0ExMTRFOTkKUldTWlRoRjYvZ1RPOW44bVRqaElibXpkazgrMXZ0bVRCbWRVdC9LRUVGYWtCc1d0cFlVY2I3UnMK",
+      "endpoints": [
+        "https://github.com/priyanshujain/margin-calendar/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

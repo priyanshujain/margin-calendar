@@ -324,4 +324,33 @@ mod tests {
     fn the_machine_id_is_stable_within_a_run() {
         assert_eq!(machine_id(), machine_id());
     }
+
+    /// The round trip the app performs, through the real salt file and the real machine id, rather
+    /// than the constant key the tests above hand to `seal` directly. This is the path a sign-in
+    /// takes, and every derivation in it has to agree with every other or a token survives only
+    /// the call that wrote it.
+    ///
+    /// The only test that touches `DATA_DIR`, which is set once per process and never reset.
+    #[test]
+    fn a_stored_token_comes_back_out() {
+        let dir = std::env::temp_dir().join(format!("margin-calendar-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        init(dir.clone());
+
+        store("account", "1//refresh-token").expect("store");
+        assert_eq!(
+            load("account").expect("load").as_deref(),
+            Some("1//refresh-token")
+        );
+        // Again, because the second call derives the key afresh from the salt now on disk.
+        assert_eq!(
+            load("account").expect("load").as_deref(),
+            Some("1//refresh-token")
+        );
+
+        delete("account").expect("delete");
+        assert_eq!(load("account").expect("load"), None);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }

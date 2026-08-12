@@ -179,3 +179,64 @@ jobs:
             fi
           done
           gh release edit "$TAG" --repo "$REPO" --draft=false --latest
+
+  # Arch gets its own package rather than the AppImage. The AppImage carries Ubuntu's GTK stack,
+  # which cannot talk to a modern Wayland compositor and silently falls back to Xwayland; a package
+  # linked against the system webkit2gtk runs as a native Wayland client. Runs after publish so it
+  # can only ever point at a release that survived the manifest check.
+  aur:
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Render the PKGBUILD for this release
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          URL="https://github.com/$REPO/releases/download/v$VERSION/Margin.Calendar_${VERSION}_amd64.deb"
+          # From the published asset, so the checksum is of the artifact users will actually fetch.
+          curl -fsSL --retry 3 -o package.deb "$URL"
+          SHA=$(sha256sum package.deb | cut -d' ' -f1)
+          sed -e "s/@VERSION@/$VERSION/g" -e "s/@SHA256@/$SHA/g" packaging/aur/PKGBUILD.in > PKGBUILD
+          echo "pkgver $VERSION, sha256 $SHA"
+
+      - name: Generate .SRCINFO
+        # makepkg is Arch-only and refuses to run as root, hence the container and the throwaway
+        # user. --printsrcinfo parses the PKGBUILD, it does not build anything.
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w archlinux:base-devel bash -c '
+            useradd -m builder && chown -R builder /w
+            su builder -c "makepkg --printsrcinfo" > .SRCINFO'
+          cat .SRCINFO
+
+      - name: Push to the AUR
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          if [ -z "$AUR_SSH_PRIVATE_KEY" ]; then
+            echo "::warning::AUR_SSH_PRIVATE_KEY is not set, so the AUR package was built but not published. The release itself is unaffected."
+            exit 0
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
+          git clone ssh://aur@aur.archlinux.org/margin-calendar-bin.git aur
+          cp PKGBUILD .SRCINFO aur/
+          cd aur
+          # A package that does not exist yet clones as an empty repo, where the local branch name
+          # is whatever git defaults to. The AUR only accepts master.
+          git checkout -B master
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          if git diff --cached --quiet; then
+            echo "AUR is already at this version, nothing to push."
+            exit 0
+          fi
+          git commit -m "margin-calendar-bin $VERSION"
+          git push origin master

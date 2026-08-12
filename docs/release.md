@@ -36,6 +36,28 @@ targets, at which point the publish gate wants `windows-x86_64` too.
 Phones do not come from this pipeline at all. The store is their update channel, and what building
 for one takes is in [mobile.md](mobile.md).
 
+## Arch
+
+Arch gets its own package, `margin-calendar-bin` on the AUR, pushed by the release workflow after
+the manifest check passes. It is worth the extra moving part: the AppImage bundles Ubuntu's GTK
+stack, and a bundled `libwayland-client` cannot talk to a current compositor, so on Hyprland the
+AppImage silently falls back to Xwayland. The packaged build links against the system
+`webkit2gtk-4.1` and runs as a native Wayland client.
+
+It is a binary package by necessity rather than laziness. The Google OAuth client is embedded at
+compile time from a file that is deliberately not in the repo, so anything built from source on
+someone else's machine would run and then tell them Google Calendar is not set up. The PKGBUILD
+therefore repackages the published `.deb`, whose payload is already a normal `/usr` tree.
+
+`packaging/aur/PKGBUILD.in` is the template. The workflow fills in the version and the sha256 of
+the artifact that was actually published, generates `.SRCINFO` with `makepkg` in an Arch container,
+and pushes to `ssh://aur@aur.archlinux.org/margin-calendar-bin.git` using `AUR_SSH_PRIVATE_KEY`.
+Without that secret the job renders the package, says so, and does not fail the release.
+
+The `license=('custom')` line is a placeholder for the fact that this repo has no licence file at
+all. Nothing stops the package publishing, but a package on the AUR that nobody has licensed is
+worth fixing before anyone else builds on it.
+
 ## What the build needs
 
 Three repository secrets, all already set:

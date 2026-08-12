@@ -176,7 +176,9 @@ const TABLE: Record<CommandId, Omit<Command, "id">> = {
     },
   },
   calendars: { label: "Calendars", palette: true, run: () => overlays().show("calendars") },
-  accounts: { label: "Accounts", palette: true, run: () => overlays().show("accounts") },
+  // Named for what it connects to rather than for the panel. "Accounts" on its own says nothing
+  // about whose, and this row is how somebody opening the app cold finds the thing to do first.
+  accounts: { label: "Google accounts", palette: true, run: () => overlays().show("accounts") },
   settings: { label: "Settings", palette: true, run: () => overlays().show("settings") },
   "toggle-theme": { label: "Toggle dark mode", palette: true, run: () => useTheme.getState().toggle() },
   "check-updates": {

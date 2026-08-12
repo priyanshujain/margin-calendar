@@ -103,13 +103,24 @@ select {
   flex: none;
   position: relative;
   z-index: 45;
-  height: var(--titlebar-h);
+  /* Out of the way of a status bar or a notch, the same way the phone bars do it. A desktop reads
+     both insets as zero; an iPad gets this header rather than those bars and does not. */
+  height: calc(var(--titlebar-h) + var(--safe-top));
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 0 14px 0 var(--traffic-pad);
+  padding: var(--safe-top) 14px 0;
   background: var(--shell);
   border-bottom: 1px solid var(--line);
+}
+
+/* The macOS traffic lights float over this row, so it opens a lane for them and costs no extra
+   height. macOS is the only platform with any: they come from `titleBarStyle: "Overlay"`, which is
+   a macOS-only window setting, and on Linux, Windows, an iPad or a browser the lane was 84px of
+   nothing, pushing the view switcher off centre and starving the date range of the room it needed
+   to say what day it is. */
+:root[data-traffic] .titlebar {
+  padding-left: var(--traffic-pad);
 }
 
 .titlebar .lead {
@@ -273,7 +284,42 @@ select {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* The first-run note lays itself over whatever is here, so this is the box it covers. */
+  position: relative;
   background: var(--paper);
+}
+
+/* Above every part of the grid, which stacks up to 15, and under the overlays, which start at 20:
+   the panel this opens has to come up in front of it. */
+.first-run {
+  position: absolute;
+  inset: 0;
+  z-index: 19;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--paper);
+}
+
+.first-run-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 320px;
+  text-align: center;
+}
+
+.first-run-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: 18px;
+}
+
+.first-run-note {
+  margin: 0;
+  color: var(--ink-soft);
 }
 
 /* Overlays, margin's idiom: summoned by a key, dismissed with Escape, never resident. */

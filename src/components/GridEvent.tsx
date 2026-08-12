@@ -31,6 +31,12 @@ import { openDetailsFor } from "./useDetails";
 const CLICK_SLOP = 3;
 const TOUCH_CLICK_SLOP = 12;
 
+/**
+ * How long the click a touch leaves behind is still worth waiting for. It lands a frame or so
+ * after the release here, and historically as much as 300ms behind it on a mobile browser.
+ */
+const GHOST_CLICK_MS = 400;
+
 interface GridEventProps {
   item: Placed;
   top: number;
@@ -40,6 +46,34 @@ interface GridEventProps {
   selected: boolean;
   dragging: boolean;
   onPointerDown: (e: ReactPointerEvent, item: Placed, mode: DragMode) => void;
+}
+
+/**
+ * Eats the click the browser sends after a touch, and only that one.
+ *
+ * Cancelling the pointerdown stops the mouse events that travel with it but never the click, and
+ * the click is hit tested wherever the finger is when it lands, which by then is the card this
+ * press has just opened. Left alone it presses whatever the card put under the finger: on a phone
+ * in landscape the card is the whole stage, so a tap on a meeting opened its editor or its
+ * conference link on its own.
+ */
+function swallowGhostClick(): void {
+  let timer = 0;
+  const done = () => {
+    window.clearTimeout(timer);
+    window.removeEventListener("click", eat, true);
+    window.removeEventListener("pointerdown", done, true);
+  };
+  const eat = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    done();
+  };
+  window.addEventListener("click", eat, true);
+  // The first click after a release is the ghost, and a press that starts before it arrives means
+  // it is never coming. The timer is only the backstop for a browser that sends neither.
+  window.addEventListener("pointerdown", done, true);
+  timer = window.setTimeout(done, GHOST_CLICK_MS);
 }
 
 function edgeMode(target: EventTarget | null): DragMode {
@@ -103,6 +137,7 @@ export const GridEvent = memo(function GridEvent({
       if (Math.abs(event.clientX - downX) > slop) return;
       if (Math.abs(event.clientY - downY) > slop) return;
       open(element);
+      if (event.pointerType !== "mouse") swallowGhostClick();
     };
     window.addEventListener("pointerup", up, true);
     window.addEventListener("pointercancel", stop, true);

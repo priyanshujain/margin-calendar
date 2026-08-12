@@ -48,18 +48,26 @@ const TEXT = "M4 6h16M4 12h12M4 18h9";
 const USERS =
   "M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M12.5 7.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75";
 
-/** Clear of the window edges, and clear of the one row of chrome that is always resident. */
+/** Clear of the window edges, and clear of the chrome that is always resident. */
 const EDGE = 8;
 
+/**
+ * What the card is allowed to cover, measured off the chrome rather than named in tokens.
+ *
+ * A desktop has one row of it at the top. A phone has two, the second along the bottom, and both
+ * of them pad themselves out of the way of a notch and a home indicator, so their rectangles are
+ * the only thing that knows how tall they really are. Reading `--titlebar-h` instead meant the
+ * card was placed against the window: in landscape it came down over the tab bar, and since the
+ * bars paint above it, Edit, Delete and Close ended up behind the tab bar and unhittable.
+ */
 function viewBounds(): Bounds {
-  const bar = Number.parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue("--titlebar-h"),
-  );
+  const top = document.querySelector(".titlebar, .phonebar")?.getBoundingClientRect().bottom ?? 0;
+  const bottom = document.querySelector(".tabbar")?.getBoundingClientRect().top ?? window.innerHeight;
   return {
-    top: (Number.isFinite(bar) ? bar : 0) + EDGE,
+    top: top + EDGE,
     left: EDGE,
     right: window.innerWidth - EDGE,
-    bottom: window.innerHeight - EDGE,
+    bottom: bottom - EDGE,
   };
 }
 

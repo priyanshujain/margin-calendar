@@ -11,27 +11,34 @@ locked to `ipc:` exactly as margin has it.
 
 ## Authentication
 
-Lifted from `margin/src-tauri/src/gdrive.rs`, then split in two when mobile arrived. Both halves
-build the same consent URL with PKCE S256 and a CSRF state parameter and open it in the system
-browser through the opener plugin, never an in-app webview: Google blocks the embedded-webview
-flow, and it deserves to be blocked, because a webview the app controls can read the password
-typed into it. They differ only in how the answer comes back.
+Lifted from `margin/src-tauri/src/gdrive.rs`. Every platform builds the same consent URL with PKCE
+S256 and a CSRF state parameter, and every platform opens it in the system's browser, never in a
+webview this app owns: Google blocks the embedded-webview flow, and it deserves to be blocked,
+because a webview the app controls can read the password typed into it.
 
-Desktop binds a listener on `127.0.0.1:0` and catches the redirect on the loopback socket. The
-verifier lives on that listener's stack for the two minutes it is alive.
+The default flow is the same one on all five platforms. Bind a listener on `127.0.0.1:0`, ask
+Google to redirect there, and catch the code on the loopback socket. Google allows a Desktop client
+any loopback port without registering it, and the token endpoint checks the client id, the secret
+and the redirect rather than the operating system, so a phone can use the desktop client too. What
+makes that safe to rely on is where the browser is: on mobile the consent page opens **in front of**
+the app, in `SFSafariViewController` or a Chrome Custom Tab, so this process stays foreground and
+its listener stays live. Sending the user out to Safari would suspend it and the redirect would
+arrive at a socket nobody is accepting on. `google/browser.rs` is that surface, and dismissing it
+once the code lands.
 
-Mobile cannot do that. iOS will not keep a background listener alive dependably, and Google
-rejects loopback redirects for Android and iOS client types outright, so the redirect is a custom
-URI scheme the OS routes back to the app through `tauri-plugin-deep-link`. There is no listener to
-hold the verifier, the browser is a separate app and this process may be backgrounded while the
-user consents, so the verifier waits in `AuthState.pending` and `handle_redirect` picks it up
-whenever the link lands. It is taken rather than read, so a replayed link cannot start a second
-exchange.
+The second flow runs where a platform has been given its own OAuth client, which is Google's stated
+guidance and what to fall back on if they ever enforce it. Those clients are public, have no secret,
+and redirect to a custom URI scheme rather than to loopback. The verifier has no listener stack to
+live on, so it waits in `AuthState.pending` until the callback lands, and is taken rather than read
+so a replayed link cannot start a second exchange.
 
-That split forces one more difference. A desktop client is confidential and has a secret; an
-Android or iOS client is public and has none, so `google-credentials.json` carries up to three
-clients and the build embeds the one for the platform it is compiling for. Details and the
-console steps are in [mobile.md](mobile.md).
+Where the callback lands differs. Android opens the external browser and the OS routes the scheme
+back through `tauri-plugin-deep-link`, which is also the arrival route on a cold start. iOS uses
+`ASWebAuthenticationSession`, which reports the URL straight to a completion handler and is the only
+iOS surface that shares Safari's cookies, so an account already signed in on the phone is offered by
+name. That last point is the reason the choice is not merely academic on iOS, and
+[mobile.md](mobile.md) argues it out. `load_credentials` decides once, by whether the block is in
+the file, and everything downstream follows from that.
 
 The scope is `https://www.googleapis.com/auth/calendar` plus `openid email`. Calendar is a
 sensitive scope, so an unverified client shows the unverified-app interstitial and caps at 100

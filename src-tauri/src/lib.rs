@@ -29,7 +29,7 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
     let sync_now = MenuItemBuilder::with_id("sync-now", "Sync Now")
         .accelerator("CmdOrCtrl+R")
         .build(handle)?;
-    let accounts = MenuItemBuilder::with_id("accounts", "Accounts…").build(handle)?;
+    let accounts = MenuItemBuilder::with_id("accounts", "Google Accounts…").build(handle)?;
     let check_updates =
         MenuItemBuilder::with_id("check-updates", "Check for Updates…").build(handle)?;
     let settings = MenuItemBuilder::with_id("settings", "Settings…")
@@ -136,8 +136,10 @@ fn build_menu<R: Runtime>(handle: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>
     Ok(menu)
 }
 
-/// Google's answer to a consent request comes back as a link into this app rather than to a
-/// loopback port, because a phone has no loopback port to give it.
+/// The deep link half of mobile auth: Google's answer arrives as a link into this app rather than
+/// on a loopback socket. Only the flow that runs when a phone has its own OAuth client uses it, but
+/// it stays registered on both platforms either way, because the OS has to be told about a scheme
+/// at install time and cannot be told about one later.
 ///
 /// Both arrival routes are covered. `on_open_url` catches the link when the app was already
 /// running, which is the usual case since it is what opened the browser a moment ago;
@@ -196,6 +198,27 @@ fn stop_uikit_shrinking_the_viewport(window: &tauri::WebviewWindow) {
     });
 }
 
+/// A Chrome Custom Tab is Chrome's activity sitting on top of ours, in our own task, so this
+/// process really is backgrounded for the length of a consent round trip and coming back means the
+/// tab has gone. That is the only notice Android gives that the user backed out of signing in, and
+/// without it the accounts panel waits on an answer that is never coming. `note_resumed` works out
+/// whether the tab went because the user closed it or because this app took it down a moment after
+/// the code arrived.
+///
+/// Not `RunEvent::Resumed`, which sounds right and is not: tauri raises that one on every poll of
+/// the event loop. tao's real mobile resume arrives here, per window.
+///
+/// iOS shows the consent page inside the app, never leaves the foreground, and gets the same
+/// question answered by a delegate in `google/browser.rs` instead.
+#[cfg(target_os = "android")]
+fn watch_for_the_consent_tab_closing(window: &tauri::WebviewWindow) {
+    window.on_window_event(|event| {
+        if matches!(event, tauri::WindowEvent::Resumed) {
+            google::browser::note_resumed();
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // generate_context! first, so the updater plugin registers only when the merged config
@@ -229,6 +252,10 @@ pub fn run() {
             #[cfg(target_os = "ios")]
             if let Some(window) = handle.get_webview_window("main") {
                 stop_uikit_shrinking_the_viewport(&window);
+            }
+            #[cfg(target_os = "android")]
+            if let Some(window) = handle.get_webview_window("main") {
+                watch_for_the_consent_tab_closing(&window);
             }
             Ok(())
         });

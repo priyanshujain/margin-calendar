@@ -88,7 +88,7 @@ test("the tab bar switches the view", async ({ page }) => {
 const ROWS: { label: string; opens: string }[] = [
   { label: "Calendars", opens: "Calendars" },
   { label: "Settings", opens: "Settings" },
-  { label: "Accounts", opens: "Accounts" },
+  { label: "Google accounts", opens: "Google accounts" },
   { label: "Keyboard shortcuts", opens: "Keyboard shortcuts" },
 ];
 

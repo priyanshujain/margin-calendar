@@ -430,12 +430,19 @@ export function GridView({ defaultCalendarId }: GridViewProps) {
       if (e.button !== 0 || gesture.current) return;
       e.stopPropagation();
       select(keyOf(item.instance));
-      if (item.instance.readOnly || useGrid.getState().draft) return;
       const dayStart = startOfDay(item.startMs);
       const index = days.findIndex((d) => d === dayStart);
       if (index === -1) return;
       const { startMin, endMin } = dayMinutes(item, dayStart);
-      begin(e, mode, item, index, startMin, endMin);
+      // A block nothing can be done to is still something a swipe has to travel through. The press
+      // is stopped here rather than on the canvas, so without this the page turn was dead over
+      // every read-only event, which on a day with a couple of meetings marked busy is most of the
+      // column. It gets a gesture with no long press behind it: the only thing it can become is
+      // the swipe, and there is no item on it to commit a move to.
+      const inert = item.instance.readOnly || useGrid.getState().draft !== null;
+      if (inert && !isCoarse(e)) return;
+      begin(e, mode, inert ? null : item, index, startMin, endMin);
+      if (inert && gesture.current) clearPress(gesture.current);
     },
     // `begin` closes over the current layout and days, which is what a fresh gesture wants.
     [days, layout, select],

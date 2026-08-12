@@ -1,9 +1,13 @@
-// auth.rs     OAuth, token refresh. Loopback on desktop, a deep link on mobile.
+// auth.rs     OAuth, token refresh. A loopback listener everywhere, a deep link when a phone has
+//             been given its own OAuth client.
+// browser.rs  the consent page in front of the app on a phone, and taking it away again
 // api.rs      typed Google Calendar REST wrapper
 // secrets.rs  refresh tokens, encrypted on disk, same on every platform
 
 pub mod api;
 pub mod auth;
+#[cfg(mobile)]
+pub mod browser;
 pub mod secrets;
 
 use crate::dto::Account;

@@ -24,13 +24,26 @@ function apply(list: Instance[]): Instance[] {
     });
 }
 
+/**
+ * A first launch, which the fixture otherwise has no way to show: it is seeded with two connected
+ * accounts, so the one screen somebody new actually opens on was the one screen nobody could look
+ * at. With this set the three reads come back empty, the way they do before anything is connected.
+ */
+const firstRun = (): boolean => {
+  try {
+    return localStorage.getItem("margincal-dev-empty") === "1";
+  } catch {
+    return false;
+  }
+};
+
 export async function mockCall<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const a = (args ?? {}) as Record<string, never>;
   switch (command) {
     case "accounts_list":
-      return devAccounts as unknown as T;
+      return (firstRun() ? [] : devAccounts) as unknown as T;
     case "calendars_list":
-      return calendars as unknown as T;
+      return (firstRun() ? [] : calendars) as unknown as T;
     case "calendar_set_selected": {
       const id = a.calendarId as unknown as string;
       const selected = a.selected as unknown as boolean;
@@ -39,6 +52,7 @@ export async function mockCall<T>(command: string, args?: Record<string, unknown
       return undefined as T;
     }
     case "instances_range": {
+      if (firstRun()) return [] as unknown as T;
       const from = a.fromUtc as unknown as number;
       const to = a.toUtc as unknown as number;
       const selected = new Set(calendars.filter((c) => c.selected).map((c) => c.id));

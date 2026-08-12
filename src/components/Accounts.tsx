@@ -55,7 +55,7 @@ export function Accounts() {
   return (
     <Sheet
       open={showing}
-      title="Accounts"
+      title="Google accounts"
       onClose={close}
       foot={
         confirming ? undefined : (
@@ -67,7 +67,7 @@ export function Accounts() {
             disabled={connecting || phase === "working"}
             onClick={() => void connect()}
           >
-            Connect an account
+            Connect a Google account
           </button>
         )
       }
@@ -78,8 +78,8 @@ export function Accounts() {
           body={
             <p>
               The token is revoked and every calendar, event and pending write stored on this
-              computer for that account is deleted. Nothing changes in Google Calendar itself, and
-              you can connect the account again afterwards.
+              computer for that Google account is deleted. Nothing changes in Google Calendar
+              itself, and you can connect it again afterwards.
             </p>
           }
           confirmLabel="Disconnect"
@@ -127,7 +127,7 @@ export function Accounts() {
 
           {accounts.length === 0 && !connecting ? (
             <p className="panel-note">
-              No account is connected, so there is nothing to show on the grid yet.
+              Connect a Google account to see its calendars here. Nothing syncs until you do.
             </p>
           ) : (
             accounts.map((account) => (

@@ -6,6 +6,7 @@ import { Header } from "./components/Header";
 import { PhoneMenu, PhoneTabBar, PhoneTopBar } from "./components/PhoneBar";
 import { GridView } from "./components/GridView";
 import { AgendaView } from "./components/AgendaView";
+import { FirstRun } from "./components/FirstRun";
 import { MiniMonthOverlay } from "./components/MiniMonth";
 import { CalendarList } from "./components/CalendarList";
 import { EventEditor } from "./components/EventEditor";
@@ -51,7 +52,9 @@ function App() {
     if (!isTauri) return;
     const menu = listen<string>("menu-action", (event) => handleMenuAction(event.payload));
     const auth = listen<AuthEvent>("auth", (event) => {
-      void useAccounts.getState().handleAuthEvent(event.payload.ok, event.payload.error);
+      void useAccounts
+        .getState()
+        .handleAuthEvent(event.payload.ok, event.payload.error, event.payload.cancelled);
     });
     // A pass that fails in the background used to set the error and say nothing, so a calendar
     // that never arrived looked like a calendar you do not have. Surface it once per distinct
@@ -113,6 +116,7 @@ function App() {
       <main className="stage">
         <GridView />
         <AgendaView />
+        <FirstRun />
       </main>
       {phone ? <PhoneTabBar /> : null}
       <PhoneMenu />

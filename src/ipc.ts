@@ -25,6 +25,14 @@ const isMobileOs =
 export const isDesktop = isTauri && !isMobileOs;
 
 /**
+ * The one window whose title bar has the traffic lights inside the page. `titleBarStyle: "Overlay"`
+ * in tauri.conf.json is a macOS-only setting, so on Linux, Windows and every mobile build the
+ * header has nothing to leave room for.
+ */
+export const isMacDesktop =
+  isDesktop && typeof navigator !== "undefined" && /mac/i.test(navigator.userAgent);
+
+/**
  * True when there is a backend to answer a command: Tauri, or the dev fixture in a browser.
  * Data-loading actions gate on this. Anything touching a window API must gate on `isDesktop`
  * instead, and anything listening for a Tauri event on `isTauri`, because a phone emits those too.
@@ -168,6 +176,8 @@ export interface AuthEvent {
   error: string | null;
   accountId: string | null;
   email: string | null;
+  /** The consent browser was closed by hand. Not `ok`, but not a failure to report either. */
+  cancelled: boolean;
 }
 
 /** Payload of `sync-progress`. `store-changed` carries a plain reason string. */

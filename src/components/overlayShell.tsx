@@ -30,7 +30,7 @@ const TITLES: Record<string, string> = {
   calendars: "calendars",
   "mini-month": "the calendar",
   editor: "the event",
-  accounts: "accounts",
+  accounts: "Google accounts",
   settings: "settings",
   shortcuts: "shortcuts",
   menu: "the menu",

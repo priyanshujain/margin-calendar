@@ -5,6 +5,17 @@
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
+    <!-- Android 11 and up hide every other package from an app unless it says which it needs to
+         see. Without this, CustomTabsClient.getPackageName finds no browser at all, the OAuth
+         consent page falls back to an ordinary browser Intent, and the loopback listener it is
+         supposed to redirect to is left in a backgrounded process. Added by hand, so
+         `tauri android init` will drop it. -->
+    <queries>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+
     <application
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

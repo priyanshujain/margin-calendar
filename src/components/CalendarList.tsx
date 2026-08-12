@@ -74,7 +74,7 @@ export function CalendarList() {
         <div className="panel-empty">
           <p>No calendars here yet.</p>
           <button type="button" className="panel-button" onClick={() => show("accounts")}>
-            Connect an account
+            Connect a Google account
           </button>
         </div>
       ) : (

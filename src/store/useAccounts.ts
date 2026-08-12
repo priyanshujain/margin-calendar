@@ -10,6 +10,12 @@ type Phase = "idle" | "connecting" | "working" | "error";
 interface AccountsState {
   accounts: Account[];
   calendars: Calendar[];
+  /**
+   * True once a list has actually come back. An empty `accounts` before that is a page that has not
+   * asked yet, and telling the two apart is the difference between "connect one" and a first frame
+   * of it on every launch.
+   */
+  loaded: boolean;
   phase: Phase;
   error: string | null;
   authUrl: string | null;
@@ -17,7 +23,7 @@ interface AccountsState {
   refresh: () => Promise<void>;
   connect: () => Promise<boolean>;
   cancelConnect: () => void;
-  handleAuthEvent: (ok: boolean, error: string | null) => Promise<void>;
+  handleAuthEvent: (ok: boolean, error: string | null, cancelled?: boolean) => Promise<void>;
   openAuthUrl: () => void;
   copyAuthUrl: () => Promise<void>;
   disconnect: (accountId: string) => Promise<void>;
@@ -27,6 +33,7 @@ interface AccountsState {
 export const useAccounts = create<AccountsState>((set, get) => ({
   accounts: [],
   calendars: [],
+  loaded: false,
   phase: "idle",
   error: null,
   authUrl: null,
@@ -35,7 +42,7 @@ export const useAccounts = create<AccountsState>((set, get) => ({
     if (!live()) return;
     try {
       const [accounts, calendars] = await Promise.all([accountsList(), calendarsList()]);
-      set({ accounts, calendars });
+      set({ accounts, calendars, loaded: true });
     } catch (e) {
       set({ error: String(e) });
     }
@@ -50,7 +57,7 @@ export const useAccounts = create<AccountsState>((set, get) => ({
         .then((url) => set({ authUrl: url }))
         .catch((e) => {
           set({ phase: "error", error: String(e), resolveConnect: null });
-          notify(`Could not connect: ${e}`);
+          notify(`Could not connect your Google account: ${e}`);
           resolve(false);
         });
     }),
@@ -59,17 +66,22 @@ export const useAccounts = create<AccountsState>((set, get) => ({
     set({ phase: "idle", authUrl: null, resolveConnect: null });
     resolve?.(false);
   },
-  handleAuthEvent: async (ok, error) => {
+  handleAuthEvent: async (ok, error, cancelled = false) => {
     if (get().phase !== "connecting") return;
     const resolve = get().resolveConnect;
     if (ok) {
       await get().refresh();
       set({ phase: "idle", authUrl: null, error: null, resolveConnect: null });
       notify("Connected to Google Calendar");
+    } else if (cancelled) {
+      // Closing the consent browser is an answer, not a fault. Back to idle with nothing said:
+      // the user already knows what they did, and a red panel telling them about it reads as
+      // though shutting the sheet broke something.
+      set({ phase: "idle", authUrl: null, error: null, resolveConnect: null });
     } else {
       const message = error ?? "authorization failed";
       set({ phase: "error", authUrl: null, error: message, resolveConnect: null });
-      notify(`Could not connect: ${message}`);
+      notify(`Could not connect your Google account: ${message}`);
     }
     resolve?.(ok);
   },
@@ -93,10 +105,10 @@ export const useAccounts = create<AccountsState>((set, get) => ({
       await accountDisconnect(accountId);
       await get().refresh();
       set({ phase: "idle" });
-      notify("Disconnected");
+      notify("Google account disconnected");
     } catch (e) {
       set({ phase: "error", error: String(e) });
-      notify(`Could not disconnect: ${e}`);
+      notify(`Could not disconnect that Google account: ${e}`);
     }
   },
   setSelected: async (calendarId, selected) => {

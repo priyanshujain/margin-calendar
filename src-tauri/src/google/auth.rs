@@ -7,12 +7,9 @@
 //      a different account cannot write against stale remote ids.
 
 use std::collections::HashMap;
-#[cfg(desktop)]
 use std::io::{Read, Write};
-#[cfg(desktop)]
 use std::net::{TcpListener, TcpStream};
 use std::sync::LazyLock;
-#[cfg(desktop)]
 use std::time::Instant;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -29,13 +26,20 @@ use crate::dto::{Account, AuthEvent};
 use crate::google::secrets;
 
 pub const SCOPES: &str = "openid email https://www.googleapis.com/auth/calendar";
+
+/// How long the listener waits for Google to come back. Two minutes is generous on a desktop, where
+/// the browser is a window away and a keyboard is a keyboard.
 #[cfg(desktop)]
 pub const AUTH_TIMEOUT_SECS: u64 = 120;
 
-/// How long a mobile consent round trip may take. Far longer than the desktop listener's two
-/// minutes, because on a phone the browser is a separate app: signing in, a password manager and
-/// a 2FA prompt in a third app can all happen between leaving and coming back, and this process
-/// is doing nothing but holding a verifier in the meantime.
+/// The same wait on a phone, which has to cover an email and a password typed on glass, a password
+/// manager round trip, and very often a 2FA prompt in a third app.
+#[cfg(mobile)]
+pub const AUTH_TIMEOUT_SECS: u64 = 900;
+
+/// The same again for the deep link flow, where the wait is even less this app's to control: the
+/// browser is a separate app there, so this process may be backgrounded for all of it while it does
+/// nothing but hold a verifier.
 #[cfg(mobile)]
 pub const PENDING_TIMEOUT_SECS: u64 = 900;
 
@@ -53,10 +57,14 @@ pub static HTTP: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .expect("could not build the HTTP client")
 });
 
-/// Google issues a different OAuth client per platform and will not accept one in another's place.
-/// A desktop client is confidential and redirects to loopback; an Android or iOS client is public,
-/// has no secret at all, and redirects to a custom URI scheme. So the credentials file carries up
-/// to three clients and the build picks the one for the platform it is being compiled for.
+/// Up to three OAuth clients, of which a build uses exactly one.
+///
+/// `installed` is a Desktop client: confidential, so it has a secret, and allowed to redirect to
+/// loopback on any port without registering it first. `android` and `ios` are public clients with
+/// no secret at all, and they redirect to a custom URI scheme instead.
+///
+/// A phone uses `installed` unless its own block is present, which is a deliberate choice and the
+/// reason mobile sign-in needs no console work. `connect` says what the two flows cost.
 #[derive(Deserialize)]
 struct CredentialsFile {
     installed: Credentials,
@@ -81,6 +89,12 @@ pub struct Credentials {
     /// Mobile only, and only when Google's console shows something other than the default below.
     #[serde(default)]
     pub redirect_uri: Option<String>,
+    /// Set at load time rather than read from the file: true when this client came out of the
+    /// `android` or `ios` block. It is the only thing that decides which of the two mobile flows
+    /// runs, so it travels with the client that forces the choice rather than being worked out
+    /// again wherever the answer is needed.
+    #[serde(skip)]
+    pub platform_client: bool,
 }
 
 fn default_auth_uri() -> String {
@@ -109,20 +123,27 @@ fn reversed_client_id(client_id: &str) -> String {
 
 const NOT_SET_UP: &str = "Google Calendar is not set up yet. Add a real OAuth client to google-credentials.json and rebuild.";
 
+/// The one client this build signs in with. A missing platform block is not an error: it means the
+/// desktop client and the loopback flow, which is what a phone gets until somebody decides
+/// otherwise. Every caller has to agree on the answer, because a refresh token belongs to the
+/// client that obtained it.
 pub fn load_credentials() -> Result<Credentials, String> {
     let parsed: CredentialsFile = serde_json::from_str(CREDENTIALS_JSON)
         .map_err(|e| format!("invalid google-credentials.json: {e}"))?;
 
     #[cfg(target_os = "android")]
-    let creds = parsed.android.ok_or(
-        "google-credentials.json has no \"android\" client. Create an OAuth client of type Android in the Google Cloud console and add it. See docs/mobile.md.",
-    )?;
+    let (mut creds, platform_client) = match parsed.android {
+        Some(creds) => (creds, true),
+        None => (parsed.installed, false),
+    };
     #[cfg(target_os = "ios")]
-    let creds = parsed.ios.ok_or(
-        "google-credentials.json has no \"ios\" client. Create an OAuth client of type iOS in the Google Cloud console and add it. See docs/mobile.md.",
-    )?;
+    let (mut creds, platform_client) = match parsed.ios {
+        Some(creds) => (creds, true),
+        None => (parsed.installed, false),
+    };
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    let creds = parsed.installed;
+    let (mut creds, platform_client) = (parsed.installed, false);
+    creds.platform_client = platform_client;
 
     if creds.client_id.starts_with("YOUR_CLIENT_ID")
         || creds
@@ -135,8 +156,9 @@ pub fn load_credentials() -> Result<Credentials, String> {
     Ok(creds)
 }
 
-/// Where Google sends the browser back to. Desktop binds a loopback port per attempt, so it is
-/// decided in `connect` rather than here and this is mobile only.
+/// Where Google sends the browser back to on the custom scheme flow. The loopback flow binds a port
+/// per attempt and works its own redirect out in `connect_by_loopback`, so this is only for the
+/// platforms that have been given their own client.
 #[cfg(mobile)]
 pub fn redirect_uri(creds: &Credentials) -> String {
     if let Some(explicit) = &creds.redirect_uri {
@@ -219,7 +241,6 @@ fn urlencode(s: &str) -> String {
     url::form_urlencoded::byte_serialize(s.as_bytes()).collect()
 }
 
-#[cfg(desktop)]
 fn write_http_message(stream: &mut TcpStream, message: &str) {
     let body = format!(
         "<!doctype html><html><head><meta charset=\"utf-8\"><title>Margin Calendar</title></head>\
@@ -235,7 +256,6 @@ fn write_http_message(stream: &mut TcpStream, message: &str) {
     let _ = stream.flush();
 }
 
-#[cfg(desktop)]
 #[derive(Debug, PartialEq, Eq)]
 enum Redirect {
     Code(String),
@@ -245,7 +265,6 @@ enum Redirect {
     Waiting,
 }
 
-#[cfg(desktop)]
 fn request_path(request: &str) -> &str {
     request
         .lines()
@@ -254,7 +273,6 @@ fn request_path(request: &str) -> &str {
         .unwrap_or("")
 }
 
-#[cfg(desktop)]
 fn parse_redirect(path: &str, expected_state: &str) -> Redirect {
     if path == "/favicon.ico" {
         return Redirect::Waiting;
@@ -284,7 +302,14 @@ fn parse_redirect(path: &str, expected_state: &str) -> Redirect {
     }
 }
 
-#[cfg(desktop)]
+/// What the frontend is told when the user backed out rather than finishing: closing the consent
+/// browser on a phone, or pressing Cancel on Google's own screen anywhere.
+///
+/// `emit_auth` compares against this exact string to set `AuthEvent.cancelled`, which is what stops
+/// the frontend reporting a change of mind as a failure. So it is a constant on every platform, and
+/// every path that means "the user chose not to" must return this rather than wording its own.
+const CANCELLED: &str = "Sign-in was cancelled.";
+
 fn await_code(
     listener: TcpListener,
     expected_state: &str,
@@ -294,6 +319,13 @@ fn await_code(
     loop {
         if Instant::now() > deadline {
             return Err("Timed out waiting for Google authorization.".to_string());
+        }
+        // Closing the consent page is the mobile equivalent of closing the browser tab, and the
+        // one abandonment the OS actually tells us about. Polled here rather than interrupting the
+        // loop, so this stays the only place that decides an attempt is over.
+        #[cfg(mobile)]
+        if crate::google::browser::cancelled() {
+            return Err(CANCELLED.to_string());
         }
         match listener.accept() {
             Ok((mut stream, _)) => {
@@ -315,6 +347,12 @@ fn await_code(
                             &mut stream,
                             "Authorization was cancelled. You can close this tab.",
                         );
+                        // `access_denied` is Google's word for the user pressing Cancel on the
+                        // consent screen, which is the same decision as closing the browser and
+                        // deserves the same quiet handling. Anything else really did go wrong.
+                        if error == "access_denied" {
+                            return Err(CANCELLED.to_string());
+                        }
                         return Err(format!("Google authorization failed: {error}"));
                     }
                     Redirect::Mismatch => {
@@ -491,9 +529,12 @@ fn auth_url(creds: &Credentials, redirect: &str, challenge: &str, csrf: &str) ->
     )
 }
 
-/// The system browser, never an in-app webview. Google blocks the embedded-webview flow outright,
-/// and it deserves to be blocked: a webview the app controls can read what the user types into it.
-fn open_in_browser(app: &tauri::AppHandle, url: &str) {
+/// Hands the URL to whichever browser the OS considers the user's, in its own process. Never an
+/// in-app webview: Google blocks the embedded-webview flow outright, and it deserves to be blocked,
+/// because a webview the app controls can read what the user types into it. `browser.rs` covers the
+/// mobile surfaces, which are the system's browser too and are only in front of the app rather than
+/// inside it.
+pub(super) fn open_in_browser(app: &tauri::AppHandle, url: &str) {
     use tauri_plugin_opener::OpenerExt;
     let _ = app.opener().open_url(url.to_string(), None::<&str>);
 }
@@ -507,10 +548,14 @@ fn emit_auth(app: &tauri::AppHandle, outcome: Result<(String, String), String>) 
                 error: None,
                 account_id: Some(account_id),
                 email: Some(email),
+                cancelled: false,
             }
         }
+        // Compared against the constant the cancel paths raise, rather than matched on its text,
+        // so rewording it cannot quietly turn a cancel back into an error on screen.
         Err(error) => AuthEvent {
             ok: false,
+            cancelled: error == CANCELLED,
             error: Some(error),
             account_id: None,
             email: None,
@@ -519,9 +564,34 @@ fn emit_auth(app: &tauri::AppHandle, outcome: Result<(String, String), String>) 
     let _ = app.emit("auth", event);
 }
 
-#[cfg(desktop)]
+/// One consent request, on all five platforms.
+///
+/// The loopback flow is the default everywhere, phones included. Google lets a Desktop client
+/// redirect to loopback on any port with nothing registered in advance, and the token endpoint
+/// checks the client id, the secret and the redirect and has no idea which OS asked. What used to
+/// make this impossible on a phone was not the protocol but the browser: sending the user out to
+/// Safari suspends this process, and a suspended process is not accepting on its socket. An in-app
+/// browser does not leave, which is why `browser.rs` exists and why this branch is now the common
+/// one.
+///
+/// The custom scheme flow runs instead when the credentials file has a client for this platform.
+/// That is Google's stated guidance, and the thing to reach for if they ever start enforcing it,
+/// but on iOS it is worth having for its own sake: it is the only way to reach
+/// `ASWebAuthenticationSession`, which is the only iOS browser that shares Safari's cookies.
+/// docs/mobile.md has the trade in full.
 pub async fn connect(app: tauri::AppHandle) -> Result<String, String> {
     let creds = load_credentials()?;
+    #[cfg(mobile)]
+    if creds.platform_client {
+        return connect_by_deep_link(app, creds).await;
+    }
+    connect_by_loopback(app, creds).await
+}
+
+async fn connect_by_loopback(
+    app: tauri::AppHandle,
+    creds: Credentials,
+) -> Result<String, String> {
     let verifier = random_b64(64);
     let challenge = pkce_challenge(&verifier);
     let csrf = random_b64(24);
@@ -531,7 +601,10 @@ pub async fn connect(app: tauri::AppHandle) -> Result<String, String> {
     let redirect = format!("http://127.0.0.1:{port}");
     let url = auth_url(&creds, &redirect, &challenge, &csrf);
 
+    #[cfg(desktop)]
     open_in_browser(&app, &url);
+    #[cfg(mobile)]
+    crate::google::browser::open(&app, &url);
 
     let app_bg = app.clone();
     tauri::async_runtime::spawn(async move {
@@ -542,13 +615,26 @@ pub async fn connect(app: tauri::AppHandle) -> Result<String, String> {
     Ok(url)
 }
 
-/// Mobile has no loopback listener to wait on, so `connect` ends the moment the browser opens and
-/// the flow resumes in `handle_redirect` whenever the deep link arrives. What is stashed here is
-/// the PKCE verifier and the CSRF state, which is the only thing tying the code that comes back to
-/// the request that went out.
+/// The custom scheme flow. What is stashed here is the PKCE verifier and the CSRF state, which is
+/// the only thing tying the code that comes back to the request that went out, since there is no
+/// listener holding either on its own stack.
+///
+/// Where the answer comes back from differs by platform, and so does what it is worth.
+///
+/// iOS hands the URL to `ASWebAuthenticationSession`, which reports the callback straight to a
+/// completion handler. It is the only iOS surface that shares Safari's cookies, so an account
+/// already signed in on the phone is offered by name rather than asking for a password again. That
+/// is the reason this flow is worth the console visit on iOS, and `browser.rs` says the rest.
+///
+/// Android opens the external browser and waits for the deep link, which is a genuinely separate
+/// app: this process may be backgrounded, or killed outright, for the whole of it. Android needs
+/// none of this, because a Custom Tab already shares Chrome's cookies and the loopback flow above
+/// already works, so this is only ever reached when somebody has gone and made an Android client.
 #[cfg(mobile)]
-pub async fn connect(app: tauri::AppHandle) -> Result<String, String> {
-    let creds = load_credentials()?;
+async fn connect_by_deep_link(
+    app: tauri::AppHandle,
+    creds: Credentials,
+) -> Result<String, String> {
     let verifier = random_b64(64);
     let challenge = pkce_challenge(&verifier);
     let csrf = random_b64(24);
@@ -561,13 +647,38 @@ pub async fn connect(app: tauri::AppHandle) -> Result<String, String> {
         *pending = Some(Pending {
             state: csrf,
             verifier,
-            redirect,
+            redirect: redirect.clone(),
             expires: now() + PENDING_TIMEOUT_SECS,
         });
     }
 
+    #[cfg(target_os = "ios")]
+    crate::google::browser::authenticate(&app, &url, callback_scheme(&redirect));
+    #[cfg(not(target_os = "ios"))]
     open_in_browser(&app, &url);
     Ok(url)
+}
+
+/// `ASWebAuthenticationSession` matches on the scheme alone and wants it bare, so the path and the
+/// colon that `redirect_uri` builds have to come back off.
+#[cfg(target_os = "ios")]
+fn callback_scheme(redirect: &str) -> &str {
+    redirect.split(':').next().unwrap_or(redirect)
+}
+
+/// The consent surface ended with no callback URL at all: the user closed it, or it could not be
+/// shown. Either way the pending verifier is spent, and the panel is waiting on an answer that is
+/// never coming, so it is told. A cancel says so plainly rather than reporting a failure.
+#[cfg(mobile)]
+pub async fn abandon_pending(app: tauri::AppHandle, reason: Option<String>) {
+    let auth = app.state::<AuthState>();
+    let pending = {
+        let mut slot = auth.pending.lock().await;
+        slot.take()
+    };
+    if pending.is_some() {
+        emit_auth(&app, Err(reason.unwrap_or_else(|| CANCELLED.to_string())));
+    }
 }
 
 /// Every URL the OS hands the app on a registered scheme, including ones that have nothing to do
@@ -635,7 +746,6 @@ pub async fn handle_redirect(app: tauri::AppHandle, incoming: &url::Url) {
     emit_auth(&app, outcome);
 }
 
-#[cfg(desktop)]
 async fn complete_auth(
     app: &tauri::AppHandle,
     listener: TcpListener,
@@ -649,9 +759,16 @@ async fn complete_auth(
         await_code(listener, &csrf, deadline)
     })
     .await
-    .map_err(|e| e.to_string())??;
+    .map_err(|e| e.to_string())?;
 
-    finish(app, &creds, &code, &redirect, &verifier).await
+    // Nothing takes the consent page down on its own once the listener has its answer, and what it
+    // is showing by then is the listener's own "you can close this" page. Taken away here rather
+    // than after the exchange, and whatever the outcome was, so the app comes back the moment the
+    // browser has nothing left to do. Desktop has no such surface and compiles this out.
+    #[cfg(mobile)]
+    crate::google::browser::close(app);
+
+    finish(app, &creds, &code?, &redirect, &verifier).await
 }
 
 /// Code to stored account. Everything past the point where the two flows stop differing.

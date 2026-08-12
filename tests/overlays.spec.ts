@@ -17,12 +17,12 @@ const PANELS = [
   { name: "Calendars", open: openCalendars, contains: /you@example\.com/ },
   { name: "Settings", open: openSettings, contains: /Week view/ },
   {
-    name: "Accounts",
+    name: "Google accounts",
     open: async (page: Page) => {
       await openSettings(page);
       await page.getByRole("button", { name: "Manage" }).click();
     },
-    contains: /Connect an account/,
+    contains: /Connect a Google account/,
   },
 ];
 
@@ -71,7 +71,7 @@ test("Escape unwinds one layer at a time", async ({ page }) => {
   await openSettings(page);
   await page.getByRole("button", { name: "Manage" }).click();
 
-  const accounts = page.getByRole("dialog", { name: "Accounts" });
+  const accounts = page.getByRole("dialog", { name: "Google accounts" });
   await expect(accounts).toBeVisible();
 
   await page.getByRole("button", { name: "Disconnect" }).first().click();

@@ -44,9 +44,10 @@ chacha20poly1305 = "0.10"
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
 
-# One UIKit property that wry does not set for us; stop_uikit_shrinking_the_viewport in lib.rs says
-# which one and why. These versions are the ones wry already resolves for its own iOS backend, so
-# matching them keeps a single copy of objc2 in the build rather than a second incompatible one.
+# Two things wry leaves to us: one UIKit property (stop_uikit_shrinking_the_viewport in lib.rs) and
+# the SFSafariViewController that shows the consent page (google/browser.rs). These versions are the
+# ones wry already resolves for its own iOS backend, so matching them keeps a single copy of objc2 in
+# the build rather than a second incompatible one.
 [target.'cfg(target_os = "ios")'.dependencies]
 objc2 = "0.6"
 objc2-ui-kit = { version = "0.3", default-features = false, features = [
@@ -55,6 +56,14 @@ objc2-ui-kit = { version = "0.3", default-features = false, features = [
   "UIView",
   "UIScrollView",
 ] }
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSString",
+  "NSURL",
+] }
+# Only for the null completion handler the two present/dismiss calls take. Passing a raw null
+# pointer there would encode as an object rather than a block, which objc2 checks and rejects.
+block2 = "0.6"
 
 [dev-dependencies]
 tempfile = "3"

@@ -174,4 +174,8 @@ pub struct AuthEvent {
     pub error: Option<String>,
     pub account_id: Option<String>,
     pub email: Option<String>,
+    /// The user closed the consent browser rather than anything going wrong. Still `ok: false`,
+    /// because no account arrived, but changing your mind is not a failure and must not be
+    /// reported as one.
+    pub cancelled: bool,
 }

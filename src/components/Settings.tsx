@@ -93,7 +93,7 @@ export function Settings() {
 
       <div className="setting-row">
         <span className="setting-text">
-          <span className="setting-name">Accounts</span>
+          <span className="setting-name">Google accounts</span>
           <span className="setting-note">
             {accounts.length === 0
               ? "No Google account connected yet."

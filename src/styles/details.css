@@ -45,6 +45,16 @@
   max-height: min(480px, calc(100vh - var(--titlebar-h) - 16px));
 }
 
+/* There is no title bar here. What the card has to fit inside is the window less both bars and the
+   insets they pad themselves with, which is the same box the placement measures. A cap any taller
+   than that does not merely scroll, it gets placed over the top bar: the card is laid out first and
+   pinned to its block second, so a card too tall for the gap has nowhere legal to go. */
+:root[data-phone] .details-card {
+  max-height: calc(
+    100dvh - var(--phonebar-h) - var(--safe-top) - var(--tabbar-h) - var(--safe-bottom) - 16px
+  );
+}
+
 /* The one scroll region. The footer is outside it, so however long the description runs, Edit,
    Delete and Close are where they were. */
 .details-body {

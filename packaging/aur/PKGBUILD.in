@@ -13,15 +13,17 @@ pkgrel=1
 pkgdesc="A calendar for Google Calendar, where the grid owns the window and the day fits without scrolling"
 arch=('x86_64')
 url="https://github.com/priyanshujain/margin-calendar"
-license=('custom')
+license=('MIT')
 depends=('webkit2gtk-4.1' 'gtk3')
 provides=('margin-calendar')
 conflicts=('margin-calendar')
 # Prebuilt and already linked: stripping it again buys nothing and risks the binary.
 options=('!strip' '!debug')
-source=("${pkgname}-${pkgver}.deb::${url}/releases/download/v${pkgver}/Margin.Calendar_${pkgver}_amd64.deb")
+source=("${pkgname}-${pkgver}.deb::${url}/releases/download/v${pkgver}/Margin.Calendar_${pkgver}_amd64.deb"
+        "LICENSE-${pkgver}::https://raw.githubusercontent.com/priyanshujain/margin-calendar/v${pkgver}/LICENSE")
 noextract=("${pkgname}-${pkgver}.deb")
-sha256sums=('@SHA256@')
+sha256sums=('@SHA256@'
+            '@LICENSE_SHA256@')
 
 package() {
     bsdtar -xOf "${pkgname}-${pkgver}.deb" data.tar.gz | bsdtar -xf - -C "${pkgdir}"
@@ -29,4 +31,7 @@ package() {
     # copes with that, and nothing that reads it enjoys it.
     mv "${pkgdir}/usr/share/applications/Margin Calendar.desktop" \
        "${pkgdir}/usr/share/applications/margin-calendar.desktop"
+    # MIT is not one of the licences Arch keeps in /usr/share/licenses/common, so every package
+    # under it has to carry its own copy.
+    install -Dm644 "LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }

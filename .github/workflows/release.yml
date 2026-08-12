@@ -188,7 +188,10 @@ jobs:
     needs: [prepare, publish]
     runs-on: ubuntu-latest
     steps:
+      # The tag, not main, so the template and the licence are the ones this release shipped.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
 
       - name: Render the PKGBUILD for this release
         env:
@@ -199,8 +202,13 @@ jobs:
           # From the published asset, so the checksum is of the artifact users will actually fetch.
           curl -fsSL --retry 3 -o package.deb "$URL"
           SHA=$(sha256sum package.deb | cut -d' ' -f1)
-          sed -e "s/@VERSION@/$VERSION/g" -e "s/@SHA256@/$SHA/g" packaging/aur/PKGBUILD.in > PKGBUILD
-          echo "pkgver $VERSION, sha256 $SHA"
+          # The PKGBUILD fetches the licence from the tag, so checksum the copy at that same tag.
+          LICENSE_SHA=$(sha256sum LICENSE | cut -d' ' -f1)
+          sed -e "s/@VERSION@/$VERSION/g" \
+              -e "s/@SHA256@/$SHA/g" \
+              -e "s/@LICENSE_SHA256@/$LICENSE_SHA/g" \
+              packaging/aur/PKGBUILD.in > PKGBUILD
+          echo "pkgver $VERSION, deb $SHA, licence $LICENSE_SHA"
 
       - name: Generate .SRCINFO
         # makepkg is Arch-only and refuses to run as root, hence the container and the throwaway

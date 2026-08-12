@@ -4,6 +4,7 @@ version = "0.0.1"
 description = "A calendar for Google Calendar"
 authors = ["Margin"]
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "margin_calendar_lib"

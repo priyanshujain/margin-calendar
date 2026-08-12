@@ -1,0 +1,336 @@
+/* The agenda, and search results, which are the same list. There is no time axis here at all: a
+   row says when in words, so nothing is measured, nothing is solved, and the list is free to be as
+   long as the span. It is the one part of the app that scrolls.
+
+   Surfaces, the coloured edge and the status rules are the grid's, so the two views read as one
+   product rather than two. */
+
+.agenda {
+  /* Agenda-local geometry. The shared block tokens live in tokens.css. */
+  --agenda-w: 900px;
+  --agenda-time-w: 124px;
+  --agenda-row-h: 24px;
+  --agenda-gap-h: 22px;
+
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+
+:root[data-compact] .agenda {
+  --agenda-time-w: 96px;
+  --agenda-row-h: 22px;
+}
+
+.agenda-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.agenda-inner {
+  width: min(var(--agenda-w), 100%);
+  margin: 0 auto;
+  padding: 0 16px 48px;
+}
+
+.agenda-note {
+  margin: 0;
+  padding: 14px 12px 4px;
+  color: var(--ink-faint);
+  font-size: var(--t-2);
+}
+
+/* Day heading
+   --------------------------------------------------------------------------------------------- */
+
+.agenda-day-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding: 13px 4px 4px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.agenda-day-name {
+  font-size: var(--t-2);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.agenda-day-date {
+  font-family: var(--font-heading);
+  font-size: var(--t-4);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.agenda-day-month {
+  font-size: var(--t-2);
+  color: var(--ink-faint);
+}
+
+.agenda-day-rule {
+  flex: 1;
+  height: 1px;
+  align-self: center;
+  background: var(--line);
+}
+
+.agenda-day-count {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  color: var(--ink-soft);
+  font-size: var(--t-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Today is the one heading that carries the accent, same pill the day bar uses. */
+.agenda-day[data-today] .agenda-day-date {
+  padding: 1px 7px 2px;
+  border-radius: var(--r-lg);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* What has already happened is still worth seeing, just not worth looking at. */
+.agenda-day[data-past] .agenda-day-name,
+.agenda-day[data-past] .agenda-day-date,
+.agenda-day[data-past] .agenda-day-count {
+  color: var(--ink-faint);
+}
+
+/* Rows
+   --------------------------------------------------------------------------------------------- */
+
+.agenda-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 3px 0 12px;
+}
+
+/* The row is filled with its calendar's colour, the same as a block on the grid, a step further up
+   the lightness scale and with less of the hue's chroma: a row is several times the area of a
+   block, and a fortnight of them at the grid's strength is the wall of highlighter this view exists
+   to avoid. Everything the two numbers feed is derived in grid.css, which is where the two views
+   agree on what a calendar's colour means. */
+.agenda-row {
+  --cal-fill: hsl(var(--cal-h) calc(46% * var(--cal-sat)) calc(91.5% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-fill-strong: hsl(var(--cal-h) calc(48% * var(--cal-sat)) calc(87.5% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-fill-quiet: hsl(var(--cal-h) calc(40% * var(--cal-sat)) calc(94% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-wash: hsl(var(--cal-h) calc(52% * var(--cal-sat)) 97.5%);
+
+  display: grid;
+  grid-template-columns: var(--agenda-time-w) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--agenda-row-h);
+  padding: 3px 8px 3px 10px;
+  text-align: left;
+  background: var(--cal-fill);
+  outline: 1px solid var(--cal-line-quiet);
+  outline-offset: -1px;
+  border-radius: var(--r-sm);
+  color: var(--cal-ink);
+  transition: background 120ms var(--ease), box-shadow 120ms var(--ease);
+}
+
+:root[data-theme="dark"] .agenda-row {
+  --cal-fill: hsl(var(--cal-h) calc(24% * var(--cal-sat)) calc(19% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-fill-strong: hsl(var(--cal-h) calc(26% * var(--cal-sat)) calc(24% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-fill-quiet: hsl(var(--cal-h) calc(20% * var(--cal-sat)) calc(15.5% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-wash: hsl(var(--cal-h) calc(22% * var(--cal-sat)) 12%);
+}
+
+.agenda-row:hover {
+  background: var(--cal-fill-strong);
+}
+
+.agenda-row[data-readonly] {
+  background: var(--cal-fill-quiet);
+}
+
+.agenda-row[data-selected] {
+  background: var(--cal-fill-strong);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.agenda-row-time {
+  font-size: var(--t-1);
+  font-variant-numeric: tabular-nums;
+  color: var(--cal-ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agenda-row[data-allday] .agenda-row-time {
+  letter-spacing: 0.02em;
+}
+
+.agenda-row-text {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  min-width: 0;
+}
+
+.agenda-row-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: var(--t-3);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agenda-row-where {
+  flex: 0 5 auto;
+  min-width: 0;
+  font-size: var(--t-1);
+  /* The row is a coloured surface now, so the quiet layer is the block's own quiet ink. A neutral
+     grey that was readable on paper is not readable on this. */
+  color: var(--cal-ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Not confirmed yet: the fill drops back to a wash and the rim breaks, same as on the grid. */
+.agenda-row[data-status="tentative"] {
+  background: var(--cal-wash);
+  outline-style: dashed;
+  outline-color: var(--cal-line);
+}
+
+.agenda-row[data-status="tentative"] .agenda-row-title {
+  color: var(--cal-ink-soft);
+}
+
+/* Written locally, still in the outbox, so it is provisional in a way tentative is not: filled,
+   because the hour is real, with a broken rim and italic type because the event is not whole. */
+.agenda-row[data-pending] {
+  outline-style: dotted;
+  outline-color: var(--cal-line);
+}
+
+.agenda-row[data-pending] .agenda-row-title {
+  font-style: italic;
+  color: var(--cal-ink-soft);
+}
+
+.agenda-row[data-pending] .agenda-row-time {
+  font-style: italic;
+}
+
+/* What has already happened keeps its colour, drawn at the strength somebody else's calendar is
+   drawn at. Greying the type instead would put a neutral on a coloured surface. */
+.agenda-day[data-past] .agenda-row {
+  background: var(--cal-fill-quiet);
+}
+
+.agenda-day[data-past] .agenda-row-title {
+  color: var(--cal-ink-soft);
+}
+
+/* Empty days
+   --------------------------------------------------------------------------------------------- */
+
+.agenda-gap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: var(--agenda-gap-h);
+  padding: 0 4px;
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+}
+
+.agenda-gap[data-past] {
+  color: var(--line-strong);
+}
+
+.agenda-gap-dates {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.agenda-gap-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.agenda-gap-text {
+  flex: none;
+}
+
+/* Search
+   --------------------------------------------------------------------------------------------- */
+
+.agenda-search {
+  --agenda-w: 100%;
+
+  width: min(680px, calc(100vw - 32px));
+  max-height: 100%;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+}
+
+.agenda-search .agenda-inner {
+  padding: 0 12px 16px;
+}
+
+.agenda-search-field {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.agenda-search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  outline: none;
+  font-size: var(--t-4);
+}
+
+.agenda-search-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.agenda-search-count {
+  flex: none;
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.agenda-mark {
+  padding: 0 1px;
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  color: var(--ink);
+}

@@ -1,0 +1,168 @@
+:root {
+  --font-ui: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-heading: "Literata", Georgia, "Times New Roman", serif;
+
+  --r-sm: 5px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-pill: 999px;
+
+  --titlebar-h: 46px;
+  --traffic-pad: 84px;
+
+  /* Phone chrome. The bars are the only thing standing between the app and a notch or a home
+     indicator, so the insets are read once here and everything else pads with these. A browser
+     that has never heard of env() falls back to nothing, which is the desktop. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --phonebar-h: 48px;
+  --tabbar-h: 56px;
+  /* Apple's floor for anything a finger has to hit, and the reason phone chrome is as tall as it
+     is. Desktop keeps its 28px controls. */
+  --touch-h: 44px;
+  /* Enough of the page left showing that a sheet reads as a layer over it rather than a screen.
+     A cap rather than a height, and on a phone it rarely binds: the sheet's bottom is pinned by
+     the fixed overlay, so this only bites when the content is tall enough to want more. */
+  --sheet-max-h: 88dvh;
+
+  --t-1: 11px;
+  --t-2: 12px;
+  --t-3: 13px;
+  --t-4: 15px;
+  /* iOS Safari zooms the page when a field under 16px takes the focus, and a locked viewport
+     leaves no way back out of that zoom. Phone fields take this one. */
+  --t-5: 16px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* Grid geometry. --row-h is written by the fit engine on every layout pass; the rest are
+     fixed and the fit maths reads them back. */
+  --gutter-w: 58px;
+  --daybar-h: 40px;
+  --allday-h: 26px;
+  --strip-h: 22px;
+  --row-h: 48px;
+  --row-h-min: 22px;
+
+  /* Event blocks and agenda rows. --event-min-h is mirrored as MIN_BLOCK_H in GridModel.tsx the
+     way --strip-h is mirrored in fit.ts, so the two must move together. */
+  --qc-w: 292px;
+  --event-min-h: 12px;
+  --event-gap: 3px;
+  --edge-w: 2px;
+  --grip-h: 7px;
+}
+
+:root[data-compact] {
+  --gutter-w: 44px;
+  --daybar-h: 34px;
+  --qc-w: 236px;
+  --traffic-pad: 84px;
+}
+
+:root,
+:root[data-theme="light"] {
+  --paper: #fcfbf7;
+  --shell: #f1ece2;
+  --raised: #fbfaf6;
+
+  --ink: #23201b;
+  --ink-soft: #6b6458;
+  /* Clears 4.5:1 on every light surface it lands on, including the folded strip, which is
+     the darkest. The hour axis is the text you read most in a calendar. */
+  --ink-faint: #6e675b;
+
+  --line: #e3ddce;
+  --line-strong: #d6cfbd;
+
+  --accent: #2a2622;
+  --accent-ink: #100e0b;
+  --accent-wash: rgba(35, 32, 27, 0.08);
+  --accent-contrast: #faf7f0;
+  --selection: rgba(35, 32, 27, 0.14);
+  --glass: rgba(252, 251, 247, 0.86);
+  --scrim: rgba(35, 32, 27, 0.28);
+
+  --danger: #b4453a;
+  --danger-ink: #963327;
+  --danger-wash: rgba(180, 69, 58, 0.1);
+  --danger-contrast: #faf7f0;
+
+  --shadow-page: 0 1px 2px rgba(35, 32, 27, 0.06), 0 14px 30px rgba(35, 32, 27, 0.09);
+  --shadow-pop: 0 8px 24px rgba(35, 32, 27, 0.14);
+
+  --grid-hour: #e6e0d1;
+  --grid-half: #efeade;
+  --grid-now: #b4453a;
+  --grid-past: rgba(35, 32, 27, 0.03);
+  --grid-today: rgba(35, 32, 27, 0.035);
+  --fold-surface: #ece6da;
+  --fold-line: #ddd6c6;
+
+  --event-surface: #f6f2e8;
+  --event-surface-strong: #efe9dc;
+  --event-ink: #23201b;
+
+  --cal-1: #6f6194;
+  --cal-2: #47705f;
+  --cal-3: #a06044;
+  --cal-4: #4e6484;
+  --cal-5: #856434;
+  --cal-6: #955767;
+  --cal-7: #3a6b78;
+  --cal-8: #667141;
+}
+
+:root[data-theme="dark"] {
+  --paper: #1d1a16;
+  --shell: #151310;
+  --raised: #232019;
+
+  --ink: #ece6da;
+  --ink-soft: #a89f8e;
+  /* Clears 4.5:1 on every dark surface, including a folded strip. The old #756d5e was
+     3.39:1, which only went unnoticed while today was always the first column and the dimmer
+     past-day headers never led the week. */
+  --ink-faint: #8e8677;
+
+  --line: #2c2823;
+  --line-strong: #3a352d;
+
+  --accent: #efe9dc;
+  --accent-ink: #ffffff;
+  --accent-wash: rgba(239, 233, 220, 0.12);
+  --accent-contrast: #1a1714;
+  --selection: rgba(239, 233, 220, 0.18);
+  --glass: rgba(33, 30, 25, 0.88);
+  /* The light scrim over a dark page dimmed nothing, so panels floated on shadow alone. */
+  --scrim: rgba(0, 0, 0, 0.58);
+
+  --danger: #d97a6f;
+  --danger-ink: #e58e84;
+  --danger-wash: rgba(217, 122, 111, 0.16);
+  --danger-contrast: #1a1714;
+
+  --shadow-page: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 34px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.55);
+
+  --grid-hour: #2e2a24;
+  --grid-half: #24211c;
+  --grid-now: #d97a6f;
+  --grid-past: rgba(0, 0, 0, 0.16);
+  --grid-today: rgba(239, 233, 220, 0.04);
+  --fold-surface: #1a1713;
+  --fold-line: #302b24;
+
+  --event-surface: #272319;
+  --event-surface-strong: #2f2a20;
+  --event-ink: #ece6da;
+
+  --cal-1: #a396c8;
+  --cal-2: #7fae98;
+  --cal-3: #d19a7c;
+  --cal-4: #8ba2c4;
+  --cal-5: #c4a267;
+  --cal-6: #cb909e;
+  --cal-7: #75a9b6;
+  --cal-8: #a2ae77;
+}

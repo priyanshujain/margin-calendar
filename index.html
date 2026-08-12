@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/margincal-mark.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <script>
+      (function () {
+        try {
+          var root = document.documentElement;
+
+          var t = localStorage.getItem("margincal-theme");
+          if (t !== "light" && t !== "dark")
+            t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          root.setAttribute("data-theme", t);
+
+          // Both attributes are set again by usePhone/useTouch once React is up. They are set here
+          // as well so the first paint is already the right shape: without it a phone renders the
+          // desktop header and a seven column week for a frame and then jumps.
+          var phone = matchMedia("(max-width: 640px)").matches;
+          if (phone) root.setAttribute("data-phone", "");
+          if (matchMedia("(pointer: coarse)").matches) root.setAttribute("data-touch", "");
+
+          // A seven column week on a phone is seven columns of nothing legible, so a phone that
+          // has never been told otherwise opens on the day. An explicit choice still wins.
+          var v = localStorage.getItem("margincal-view");
+          if (v !== "day" && v !== "agenda" && v !== "week") v = phone ? "day" : "week";
+          root.setAttribute("data-view", v);
+
+          var b = JSON.parse(localStorage.getItem("margincal-bounds") || "null");
+          if (b && typeof b.start === "number" && typeof b.end === "number" && b.end > b.start) {
+            root.style.setProperty("--bound-start", String(b.start));
+            root.style.setProperty("--bound-end", String(b.end));
+          }
+
+          var f = JSON.parse(localStorage.getItem("margincal-folds") || "null");
+          root.style.setProperty("--fold-count", String(Array.isArray(f) ? f.length : 0));
+        } catch (e) {}
+      })();
+    </script>
+    <title>Margin Calendar</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,458 @@
+/* The in-place create card. It hangs off the range that was dragged, so the geometry comes from
+   the same two custom properties the rest of the grid uses: --days for the column count and --i
+   for the column this one is on. JS only hands it the offsets it had to measure.
+
+   The `.swatch` family at the bottom is the one thing here that is not the card: the full editor
+   imports this file for it, so the colour choice is the same control in both places.
+
+   --qc-w is in tokens.css now, and overridden here: the card grew a description and a palette, and
+   292px was a column of squeezed rows. */
+
+.quick-create {
+  position: absolute;
+  z-index: 6;
+  left: calc(100% * var(--i) / var(--days));
+  width: calc(100% / var(--days) - var(--event-gap));
+  pointer-events: none;
+  --qc-w: 340px;
+}
+
+:root[data-compact] .quick-create {
+  --qc-w: 276px;
+}
+
+/* What the user drew, still visible under the card. */
+.quick-create-range {
+  position: absolute;
+  inset: 0;
+  min-height: var(--event-min-h);
+  background: var(--accent-wash);
+  border: 1px dashed var(--accent);
+  border-radius: var(--r-sm);
+}
+
+.quick-create-range[data-elsewhere] {
+  border-style: dotted;
+  opacity: 0.4;
+}
+
+.quick-create-card {
+  position: absolute;
+  width: var(--qc-w);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px 13px 11px;
+  pointer-events: auto;
+  user-select: text;
+  -webkit-user-select: text;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-pop);
+  color-scheme: light;
+  animation: quick-create-in 120ms var(--ease);
+}
+
+:root[data-theme="dark"] .quick-create-card {
+  color-scheme: dark;
+}
+
+/* Measured before it is placed, so it must not be seen at the wrong corner first. Transparent
+   rather than hidden, because the title field takes focus on that first frame. */
+.quick-create-card:not([data-placed]) {
+  opacity: 0;
+}
+
+@keyframes quick-create-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+.quick-create-title {
+  width: 100%;
+  padding: 1px 1px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  outline: none;
+  font-size: var(--t-4);
+  transition: border-color 120ms var(--ease);
+}
+
+/* This field is focused the instant the card opens, so the app's focus ring would be on screen
+   before the user has done anything. It underlines itself instead. */
+.quick-create-title:focus-visible {
+  outline: none;
+}
+
+.quick-create-title:focus {
+  border-bottom-color: var(--accent);
+}
+
+.quick-create-title::placeholder {
+  color: var(--ink-faint);
+}
+
+/* When
+   --------------------------------------------------------------------------------------------- */
+
+/* Wraps rather than squeezing: a narrow window that clips the meridiem off a time field is worse
+   than one that puts the all-day button on its own line. */
+.quick-create-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.quick-create-time {
+  flex: none;
+  padding: 3px 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  font-size: var(--t-2);
+  font-variant-numeric: tabular-nums;
+  transition: border-color 120ms var(--ease);
+}
+
+.quick-create-time:hover {
+  border-color: var(--ink-faint);
+}
+
+/* The field is small and the picker is a WebKit lump. Typing is the point here. */
+.quick-create-time::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.quick-create-to {
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+}
+
+.quick-create-length {
+  color: var(--ink-soft);
+  font-size: var(--t-1);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.quick-create-day {
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  color: var(--ink-soft);
+  font-size: var(--t-1);
+  white-space: nowrap;
+}
+
+.quick-create-day[data-moved] {
+  color: var(--ink);
+}
+
+.quick-create-toggle {
+  margin-left: auto;
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+  transition: background 120ms var(--ease), color 120ms var(--ease), border-color 120ms var(--ease);
+}
+
+.quick-create-toggle:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.quick-create-toggle[data-on] {
+  background: var(--accent-wash);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+/* Where
+   --------------------------------------------------------------------------------------------- */
+
+.quick-create-where {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-create-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-pill);
+  background: var(--cal);
+}
+
+.quick-create-calendar,
+.quick-create-place {
+  min-width: 0;
+  flex: 1 1 0;
+  padding: 3px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  font-size: var(--t-2);
+  transition: border-color 120ms var(--ease);
+}
+
+.quick-create-calendar:hover,
+.quick-create-place:hover {
+  border-color: var(--ink-faint);
+}
+
+.quick-create-calendar {
+  appearance: none;
+  padding-right: 20px;
+  background-image: linear-gradient(45deg, transparent 50%, currentcolor 50%),
+    linear-gradient(135deg, currentcolor 50%, transparent 50%);
+  background-position: calc(100% - 11px) 10px, calc(100% - 7px) 10px;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+
+.quick-create-place::placeholder {
+  color: var(--ink-faint);
+}
+
+/* Colour and description
+   --------------------------------------------------------------------------------------------- */
+
+.quick-create-colour {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-create-label {
+  flex: none;
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+}
+
+/* Narrow: the label takes its own line rather than pushing two swatches onto a second one, which
+   is the difference between a palette and a ragged pile of dots. */
+:root[data-compact] .quick-create-colour {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+/* Three rows deep, which is enough to see a paragraph without the card becoming the editor. It
+   still grows by hand, and the anchor re-measures when it does. */
+.quick-create-note {
+  width: 100%;
+  min-height: 54px;
+  padding: 5px 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  font-family: inherit;
+  font-size: var(--t-2);
+  line-height: 1.45;
+  resize: vertical;
+  transition: border-color 120ms var(--ease);
+}
+
+.quick-create-note:hover {
+  border-color: var(--ink-faint);
+}
+
+.quick-create-note::placeholder {
+  color: var(--ink-faint);
+}
+
+/* What it will make
+   --------------------------------------------------------------------------------------------- */
+
+.quick-create-hint,
+.quick-create-warning {
+  margin: 0;
+  font-size: var(--t-1);
+  line-height: 1.45;
+}
+
+.quick-create-hint {
+  color: var(--ink-soft);
+}
+
+.quick-create-hint code {
+  padding: 1px 4px;
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  font-family: inherit;
+}
+
+.quick-create-warning {
+  color: var(--danger-ink);
+}
+
+/* Foot
+   --------------------------------------------------------------------------------------------- */
+
+.quick-create-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 1px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.quick-create-link {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 2px;
+  color: var(--ink-faint);
+  font-size: var(--t-2);
+  transition: color 120ms var(--ease);
+}
+
+.quick-create-link:hover {
+  color: var(--ink);
+}
+
+.quick-create-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  font-size: var(--t-2);
+  transition: background 120ms var(--ease), color 120ms var(--ease), opacity 120ms var(--ease);
+}
+
+.quick-create-button:hover {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+.quick-create-button[data-variant="primary"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.quick-create-button[data-variant="primary"]:hover {
+  background: var(--accent-ink);
+  color: var(--accent-contrast);
+}
+
+.quick-create-button:disabled,
+.quick-create-link:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.quick-create-button:disabled:hover,
+.quick-create-link:disabled:hover {
+  background: none;
+  color: var(--ink-soft);
+}
+
+.quick-create-button[data-variant="primary"]:disabled:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.quick-create-key {
+  padding: 1px 4px;
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  line-height: 1.3;
+}
+
+.quick-create-button[data-variant="primary"] .quick-create-key {
+  background: var(--selection);
+  color: var(--accent-contrast);
+}
+
+/* Narrow: the keycaps are the first thing that can go. */
+:root[data-compact] .quick-create-key {
+  display: none;
+}
+
+/* The editor's when row
+   ---------------------------------------------------------------------------------------------
+   The two date fields take the slack in that row, and `flex: 0 1 auto` let the time fields give it
+   to them: at the editor's width they were squeezed to about 48px, which in Chromium is the picker
+   icon and none of the digits. A time you cannot read is not a field. They hold their content
+   width now and the dates, which have far more room than they need, do the shrinking. */
+
+.editor .field-row .field-input[type="time"] {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: max-content;
+}
+
+/* Swatches
+   ---------------------------------------------------------------------------------------------
+   Shared with the event editor, which imports this file for them. Twelve dots on one line: the
+   eleven Google keeps against an event and the one that is not a colour, which is a ring in the
+   calendar's own hue rather than a filled dot, because following the calendar is not a choice of
+   paint. They wrap rather than shrink when the surface is too narrow for a line of them. */
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.swatch {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--swatch);
+  cursor: pointer;
+  transition: transform 120ms var(--ease), box-shadow 120ms var(--ease);
+}
+
+.swatch[data-default] {
+  background: none;
+  box-shadow: inset 0 0 0 2px var(--swatch);
+}
+
+.swatch:hover {
+  transform: scale(1.12);
+}
+
+/* The ring is drawn in the card's own surface first so it reads as a gap, then in ink. Two shadows
+   rather than an outline, because an outline on a round button is a square on WebKit. */
+.swatch[data-on] {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--ink);
+}
+
+.swatch[data-default][data-on] {
+  box-shadow: inset 0 0 0 2px var(--swatch), 0 0 0 2px var(--paper), 0 0 0 3px var(--ink);
+}
+
+.swatch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--accent);
+}
+
+.swatch[data-default]:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--swatch), 0 0 0 2px var(--paper), 0 0 0 3px var(--accent);
+}
+
+.swatch:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}

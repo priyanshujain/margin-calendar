@@ -1,0 +1,153 @@
+/* Both directions of a fold, with the mouse.
+   ------------------------------------------------------------------------------------------- */
+
+/* The chip on an empty run. It hangs off the left edge of the columns rather than sitting in the
+   middle of the run, because the middle of an empty afternoon is where you drag out an event and
+   a control there would take the gesture the gap exists for. It is also out of the gutter, whose
+   hour labels are right-aligned into exactly the space a chip would want.
+
+   The run itself is inert: the wash and the rule are a preview of the strip, not a target. */
+
+.grid-gap {
+  /* The one value this layer needs that tokens.css does not have: how brightly an empty run is lit
+     while you are pointing at it, which is most of a hovered control's wash spread over a band a
+     hundred times the size. Derived from --accent-wash rather than written as a literal, and it
+     belongs in tokens.css once that file can move. --fold-surface would have been the literal
+     preview of the strip, but in the dark palette it is within a shade of the paper and shows
+     nothing at all. */
+  --fold-hint: color-mix(in srgb, var(--accent-wash) 60%, transparent);
+  position: absolute;
+  z-index: 2;
+  left: var(--gutter-w);
+  right: 0;
+  pointer-events: none;
+  background: var(--fold-hint);
+  animation: grid-gap-in 110ms var(--ease);
+}
+
+@keyframes grid-gap-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.grid-gap-bar {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-right: 10px;
+  transform: translateY(-50%);
+}
+
+/* Where the strip would land, drawn the way the strip draws its own rule. */
+.grid-gap-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+/* The one interactive thing on this layer, and the only part of it that is not a preview. */
+.grid-gap-fold {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 7px;
+  padding: 2px 8px 2px 6px;
+  pointer-events: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--raised);
+  color: var(--ink-soft);
+  font-size: var(--t-1);
+  white-space: nowrap;
+  transition: background 120ms var(--ease), color 120ms var(--ease),
+    border-color 120ms var(--ease);
+}
+
+.grid-gap-fold:hover {
+  background: var(--fold-surface);
+  border-color: var(--fold-line);
+  color: var(--ink);
+}
+
+/* The other direction. The strip is already the button, so this is a label rather than a target,
+   and it takes its emphasis from the strip it sits on. */
+.grid-strip-mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  transition: color 120ms var(--ease);
+}
+
+.grid-strip:hover .grid-strip-mark {
+  color: var(--ink);
+}
+
+/* The strip already says "12am to 8am" and its whole surface is the button, so the verb is a third
+   signal for the same thing. The icon stays, and the word waits until you are actually pointing at
+   it, which is when a first-timer needs telling that a strip is clickable. */
+.grid-strip .grid-fold-verb {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width 140ms var(--ease), opacity 140ms var(--ease);
+}
+
+.grid-strip:hover .grid-fold-verb,
+.grid-strip:focus-visible .grid-fold-verb {
+  max-width: 6em;
+  opacity: 1;
+}
+
+/* At the smallest window a column is 119px wide and a chip carrying a word is most of it, so the
+   chip drops to its arrows and keeps the whole phrase in its title. The strip has the width either
+   way and keeps its verb. */
+:root[data-compact] .grid-gap-fold .grid-fold-verb {
+  display: none;
+}
+
+:root[data-compact] .grid-gap-fold {
+  padding: 2px 5px;
+}
+
+/* With a finger
+   -------------------------------------------------------------------------------------------
+
+   Both halves of this file were written for a pointer that can rest on something without pressing
+   it. A touchscreen has no such pointer: the verb never arrives, and the chip is drawn only for
+   the run under the cursor, of which there is never one. So both stop waiting to be pointed at.
+   GridGaps puts a chip on every empty run to match, since there is no hovered run to choose. */
+
+:root[data-touch] .grid-strip .grid-fold-verb {
+  max-width: 6em;
+  opacity: 1;
+}
+
+:root[data-touch] .grid-strip-mark {
+  color: var(--ink-soft);
+}
+
+/* The run is empty on every visible day, which is what makes it a run, so the chip is over nothing
+   and can take the width it needs. That is also why this outranks the compact rule above: the word
+   was dropped there to spare a 119px column, and there is no column under this one to spare. */
+:root[data-touch] .grid-gap {
+  background: none;
+  animation: none;
+}
+
+:root[data-touch] .grid-gap-fold .grid-fold-verb {
+  display: inline;
+}
+
+:root[data-touch] .grid-gap-fold {
+  min-height: var(--touch-target);
+  padding: 4px 12px 4px 9px;
+}

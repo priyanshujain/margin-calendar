@@ -1,0 +1,518 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		027A8ABDBEF8BBD53B7567E0 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DE35A9DF9BD78C3583E7FC5A /* CoreGraphics.framework */; };
+		301C79BAC9680139BDA2B1B9 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0481146F91F640D48193D38B /* Metal.framework */; };
+		6EBA510B4387F78D53CD3E07 /* libapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = AE625022A492F5C76B797AC2 /* libapp.a */; };
+		742DD5E8169EE4583B151E73 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6DA270EEE52796CFD8EC281A /* Security.framework */; };
+		7E481312148309B8AA94B95C /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 65E80ECEB0844651FB03158B /* main.mm */; };
+		89071E2C472ACC0F43105CEA /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C9E2CB1CFED1CED2BECCBB94 /* QuartzCore.framework */; };
+		9191DAC879BEE67BC864E01D /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C57E62E8D422566DF7D919FD /* WebKit.framework */; };
+		92277B81E1BC594DEDA75316 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 245C8245C8B384E2FF25C48B /* MetalKit.framework */; };
+		CC28802C3A0B94C1DDA4C5C4 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 8879346700D62B7DDE676FB9 /* assets */; };
+		D3611CD2631DCF0504874997 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 42AC5D9341EC41579150A559 /* LaunchScreen.storyboard */; };
+		ECFE37538824122085E847BB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 463516468F6D0DFDE911E397 /* Assets.xcassets */; };
+		F93C0964D01061FFB2C16E2B /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A4B92AAC82F707F343DF3F9F /* UIKit.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		00DFE6DD99BE0C3AEAB97944 /* recur.rs */ = {isa = PBXFileReference; path = recur.rs; sourceTree = "<group>"; };
+		0481146F91F640D48193D38B /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		04B2978EA3C716D6EB74712D /* transport.rs */ = {isa = PBXFileReference; path = transport.rs; sourceTree = "<group>"; };
+		06C647F836A02A8532C617DA /* read.rs */ = {isa = PBXFileReference; path = read.rs; sourceTree = "<group>"; };
+		11EB0C96B4964DD8EB696D63 /* api.rs */ = {isa = PBXFileReference; path = api.rs; sourceTree = "<group>"; };
+		1578DA0D4DFD83FCFC7CD967 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
+		19E9713B598286F9A58F6524 /* auth.rs */ = {isa = PBXFileReference; path = auth.rs; sourceTree = "<group>"; };
+		245C8245C8B384E2FF25C48B /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		42975F72473A262C8DC12B2D /* model.rs */ = {isa = PBXFileReference; path = model.rs; sourceTree = "<group>"; };
+		42AC5D9341EC41579150A559 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		463516468F6D0DFDE911E397 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		482B1BACC9A878BD6000F332 /* tests.rs */ = {isa = PBXFileReference; path = tests.rs; sourceTree = "<group>"; };
+		5F2BD57CDF2418F2114AC00F /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		601DA7E7CE0314ED76601AB8 /* library.rs */ = {isa = PBXFileReference; path = library.rs; sourceTree = "<group>"; };
+		63440E6A8AA7263282FF0880 /* schema.rs */ = {isa = PBXFileReference; path = schema.rs; sourceTree = "<group>"; };
+		65E80ECEB0844651FB03158B /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
+		6DA270EEE52796CFD8EC281A /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		75B8603218CF087545CA23FE /* margin-calendar_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "margin-calendar_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		7C24690CAAB5FC9E1015052A /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
+		7DF7225718DEED80CC685D70 /* secrets.rs */ = {isa = PBXFileReference; path = secrets.rs; sourceTree = "<group>"; };
+		83A2962170C125E12A298599 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		8879346700D62B7DDE676FB9 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
+		9FDB21551CF4959451A03485 /* pull.rs */ = {isa = PBXFileReference; path = pull.rs; sourceTree = "<group>"; };
+		A19747E3FB043C2FC441866B /* margin-calendar_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "margin-calendar_iOS.entitlements"; sourceTree = "<group>"; };
+		A2B433E2EAB81F688739BD72 /* push.rs */ = {isa = PBXFileReference; path = push.rs; sourceTree = "<group>"; };
+		A4B92AAC82F707F343DF3F9F /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		AE625022A492F5C76B797AC2 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
+		AF43A8B9F86EC0EE625D5AC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BB370CF51946E1086F725448 /* dto.rs */ = {isa = PBXFileReference; path = dto.rs; sourceTree = "<group>"; };
+		C2072E3C608C4C15356BFD25 /* sync.rs */ = {isa = PBXFileReference; path = sync.rs; sourceTree = "<group>"; };
+		C57E62E8D422566DF7D919FD /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		C9E2CB1CFED1CED2BECCBB94 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		D903EBABA83CD7E1EFE1DAF5 /* write.rs */ = {isa = PBXFileReference; path = write.rs; sourceTree = "<group>"; };
+		DE35A9DF9BD78C3583E7FC5A /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		E8E713A134B354F21DEF913B /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		763B09C9EE617B71EF7F11D4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6EBA510B4387F78D53CD3E07 /* libapp.a in Frameworks */,
+				027A8ABDBEF8BBD53B7567E0 /* CoreGraphics.framework in Frameworks */,
+				301C79BAC9680139BDA2B1B9 /* Metal.framework in Frameworks */,
+				92277B81E1BC594DEDA75316 /* MetalKit.framework in Frameworks */,
+				89071E2C472ACC0F43105CEA /* QuartzCore.framework in Frameworks */,
+				742DD5E8169EE4583B151E73 /* Security.framework in Frameworks */,
+				F93C0964D01061FFB2C16E2B /* UIKit.framework in Frameworks */,
+				9191DAC879BEE67BC864E01D /* WebKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		08BDFB2F8332AB5AE4C89430 /* store */ = {
+			isa = PBXGroup;
+			children = (
+				83A2962170C125E12A298599 /* mod.rs */,
+				06C647F836A02A8532C617DA /* read.rs */,
+				63440E6A8AA7263282FF0880 /* schema.rs */,
+				D903EBABA83CD7E1EFE1DAF5 /* write.rs */,
+			);
+			path = store;
+			sourceTree = "<group>";
+		};
+		1DFBF6D830071E5D1FE33720 /* margin-calendar_iOS */ = {
+			isa = PBXGroup;
+			children = (
+				AF43A8B9F86EC0EE625D5AC0 /* Info.plist */,
+				A19747E3FB043C2FC441866B /* margin-calendar_iOS.entitlements */,
+			);
+			path = "margin-calendar_iOS";
+			sourceTree = "<group>";
+		};
+		2717CB47409E376228915D92 = {
+			isa = PBXGroup;
+			children = (
+				8879346700D62B7DDE676FB9 /* assets */,
+				463516468F6D0DFDE911E397 /* Assets.xcassets */,
+				42AC5D9341EC41579150A559 /* LaunchScreen.storyboard */,
+				701F7017030A43C5B1F02E43 /* Externals */,
+				1DFBF6D830071E5D1FE33720 /* margin-calendar_iOS */,
+				F2D7B8DA6405BBC1A306E0F5 /* Sources */,
+				C66369FCC7BD73AD6D6B329D /* src */,
+				7B0CEBED082C2704D1AE2349 /* Frameworks */,
+				FD095DBA118C3E02B31F8572 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		31E412A61C3C36BBEA22CAB4 /* sync */ = {
+			isa = PBXGroup;
+			children = (
+				42975F72473A262C8DC12B2D /* model.rs */,
+				9FDB21551CF4959451A03485 /* pull.rs */,
+				A2B433E2EAB81F688739BD72 /* push.rs */,
+				482B1BACC9A878BD6000F332 /* tests.rs */,
+				04B2978EA3C716D6EB74712D /* transport.rs */,
+			);
+			path = sync;
+			sourceTree = "<group>";
+		};
+		701F7017030A43C5B1F02E43 /* Externals */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Externals;
+			sourceTree = "<group>";
+		};
+		7B0CEBED082C2704D1AE2349 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DE35A9DF9BD78C3583E7FC5A /* CoreGraphics.framework */,
+				AE625022A492F5C76B797AC2 /* libapp.a */,
+				0481146F91F640D48193D38B /* Metal.framework */,
+				245C8245C8B384E2FF25C48B /* MetalKit.framework */,
+				C9E2CB1CFED1CED2BECCBB94 /* QuartzCore.framework */,
+				6DA270EEE52796CFD8EC281A /* Security.framework */,
+				A4B92AAC82F707F343DF3F9F /* UIKit.framework */,
+				C57E62E8D422566DF7D919FD /* WebKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		819B89450E4EF4F878332BE3 /* bindings */ = {
+			isa = PBXGroup;
+			children = (
+				1578DA0D4DFD83FCFC7CD967 /* bindings.h */,
+			);
+			path = bindings;
+			sourceTree = "<group>";
+		};
+		8465EC9E3B20D359B37ED5CC /* google */ = {
+			isa = PBXGroup;
+			children = (
+				11EB0C96B4964DD8EB696D63 /* api.rs */,
+				19E9713B598286F9A58F6524 /* auth.rs */,
+				5F2BD57CDF2418F2114AC00F /* mod.rs */,
+				7DF7225718DEED80CC685D70 /* secrets.rs */,
+			);
+			path = google;
+			sourceTree = "<group>";
+		};
+		C66369FCC7BD73AD6D6B329D /* src */ = {
+			isa = PBXGroup;
+			children = (
+				BB370CF51946E1086F725448 /* dto.rs */,
+				E8E713A134B354F21DEF913B /* lib.rs */,
+				601DA7E7CE0314ED76601AB8 /* library.rs */,
+				7C24690CAAB5FC9E1015052A /* main.rs */,
+				00DFE6DD99BE0C3AEAB97944 /* recur.rs */,
+				C2072E3C608C4C15356BFD25 /* sync.rs */,
+				8465EC9E3B20D359B37ED5CC /* google */,
+				08BDFB2F8332AB5AE4C89430 /* store */,
+				31E412A61C3C36BBEA22CAB4 /* sync */,
+			);
+			name = src;
+			path = ../../src;
+			sourceTree = "<group>";
+		};
+		C7CA186F2513338D60A6B00E /* margin-calendar */ = {
+			isa = PBXGroup;
+			children = (
+				65E80ECEB0844651FB03158B /* main.mm */,
+				819B89450E4EF4F878332BE3 /* bindings */,
+			);
+			path = "margin-calendar";
+			sourceTree = "<group>";
+		};
+		F2D7B8DA6405BBC1A306E0F5 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				C7CA186F2513338D60A6B00E /* margin-calendar */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		FD095DBA118C3E02B31F8572 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				75B8603218CF087545CA23FE /* margin-calendar_iOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		44343353A6DEDC69656FAA54 /* margin-calendar_iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E8ACAA0021FD841CDD504F34 /* Build configuration list for PBXNativeTarget "margin-calendar_iOS" */;
+			buildPhases = (
+				D2BB0B9B44B3A2E1C386BFAD /* Build Rust Code */,
+				DEF597EC6F9C166B9E68C45C /* Sources */,
+				066AEAE8FD82D64732953ED0 /* Resources */,
+				763B09C9EE617B71EF7F11D4 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "margin-calendar_iOS";
+			packageProductDependencies = (
+			);
+			productName = "margin-calendar_iOS";
+			productReference = 75B8603218CF087545CA23FE /* margin-calendar_iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FBBBFD542B155C58C96B76B5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 94C3379210AAB44F71F32C5E /* Build configuration list for PBXProject "margin-calendar" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 2717CB47409E376228915D92;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = FD095DBA118C3E02B31F8572 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				44343353A6DEDC69656FAA54 /* margin-calendar_iOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		066AEAE8FD82D64732953ED0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ECFE37538824122085E847BB /* Assets.xcassets in Resources */,
+				D3611CD2631DCF0504874997 /* LaunchScreen.storyboard in Resources */,
+				CC28802C3A0B94C1DDA4C5C4 /* assets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		D2BB0B9B44B3A2E1C386BFAD /* Build Rust Code */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Rust Code";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Externals/x86_64/${CONFIGURATION}/libapp.a",
+				"$(SRCROOT)/Externals/arm64/${CONFIGURATION}/libapp.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "pnpm tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		DEF597EC6F9C166B9E68C45C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7E481312148309B8AA94B95C /* main.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		68D6BB2FB85DAC1C8BAB279F /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = debug;
+		};
+		7E114EA455562314CA5392E8 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = release;
+		};
+		C7BFE7ABB61BEFEA5FB5615D /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "margin-calendar_iOS/margin-calendar_iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = "margin-calendar_iOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = studio.margin.calendar;
+				PRODUCT_NAME = "Margin Calendar";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = debug;
+		};
+		ED0652ADBD2F428F7C930D66 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "margin-calendar_iOS/margin-calendar_iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = "margin-calendar_iOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = studio.margin.calendar;
+				PRODUCT_NAME = "Margin Calendar";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		94C3379210AAB44F71F32C5E /* Build configuration list for PBXProject "margin-calendar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				68D6BB2FB85DAC1C8BAB279F /* debug */,
+				7E114EA455562314CA5392E8 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		E8ACAA0021FD841CDD504F34 /* Build configuration list for PBXNativeTarget "margin-calendar_iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C7BFE7ABB61BEFEA5FB5615D /* debug */,
+				ED0652ADBD2F428F7C930D66 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = FBBBFD542B155C58C96B76B5 /* Project object */;
+}

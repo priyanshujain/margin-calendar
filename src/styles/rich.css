@@ -1,0 +1,58 @@
+/* A description printed as elements, wherever one is read rather than edited. The rules are the
+   same shape as the details card's, kept here so the component carries its own look and does not
+   depend on whichever panel happened to load first. */
+
+.rich {
+  min-width: 0;
+  color: var(--ink);
+  line-height: 1.55;
+  /* Pasted Drive URLs are one word two hundred characters long. */
+  overflow-wrap: anywhere;
+  /* Long enough to read a paragraph of, short enough that the buttons under it stay on screen. */
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Plain text keeps the spacing it was written with. Html has had its own collapsed already and
+   carries its structure in elements, where pre-wrap would double every gap in the source. */
+.rich[data-plain] {
+  white-space: pre-wrap;
+}
+
+.rich :is(div, ul, ol) {
+  margin: 7px 0 0;
+}
+
+.rich :is(div, ul, ol):first-child {
+  margin-top: 0;
+}
+
+.rich :is(ul, ol) {
+  padding-left: 20px;
+}
+
+.rich li + li {
+  margin-top: 3px;
+}
+
+.rich code {
+  padding: 0 4px;
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+
+/* Findable in the middle of a sentence rather than only on a line of its own. */
+.rich-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-faint);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 120ms var(--ease), color 120ms var(--ease);
+}
+
+.rich-link:hover {
+  color: var(--accent-ink);
+  text-decoration-color: currentcolor;
+}

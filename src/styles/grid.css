@@ -1,0 +1,901 @@
+/* The week and day grid. Geometry comes from the tokens and from two custom properties the fit
+   writes on `.grid`: --row-h for the solved row height and --days for the column count. Nothing
+   here measures anything; JS hands CSS the numbers and CSS does the arithmetic. */
+
+/* Two numbers the finger layer needs that tokens.css does not have yet, and that belong there
+   once that file can move: the smallest control a thumb lands on reliably, and the all-day row's
+   touch height. The second is scoped to the band rather than written over --allday-h at the root,
+   because that token is read in three other places that have their own reasons for their size. */
+:root {
+  --touch-target: 32px;
+  --allday-h-touch: 32px;
+}
+
+.grid {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  user-select: none;
+  -webkit-user-select: none;
+  /* A press on a block is a gesture, not a text selection, and iOS answers a long press over
+     anything selectable with a callout menu right where the drag was meant to start. Overridden
+     on the draft's input below, which is the one piece of real text on the grid. */
+  -webkit-touch-callout: none;
+}
+
+/* Day bar
+   ------------------------------------------------------------------------------------------- */
+
+.grid-head {
+  flex: none;
+  display: grid;
+  grid-template-columns: var(--gutter-w) minmax(0, 1fr);
+  height: var(--daybar-h);
+  border-bottom: 1px solid var(--line);
+}
+
+.grid-head-gutter {
+  border-right: 1px solid var(--line);
+}
+
+.grid-head-days {
+  display: grid;
+  grid-template-columns: repeat(var(--days), minmax(0, 1fr));
+}
+
+/* A button, because tapping a day opens it. That is the escape hatch that makes a seven column
+   week on a phone worth putting up at all, and it costs the mouse nothing: the same click does
+   the same thing with a pointer. */
+.grid-head-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  border-left: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: var(--t-2);
+  transition: color 120ms var(--ease);
+}
+
+.grid-head-day:first-child {
+  border-left: 0;
+}
+
+.grid-head-day[data-past] {
+  color: var(--ink-faint);
+}
+
+.grid-head-day[data-today],
+.grid-head-day:hover {
+  color: var(--ink);
+}
+
+.grid-head-name {
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.grid-head-date {
+  font-family: var(--font-heading);
+  font-size: var(--t-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.grid-head-day[data-today] .grid-head-date {
+  padding: 1px 7px 2px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* All-day band
+   ------------------------------------------------------------------------------------------- */
+
+.grid-allday {
+  flex: none;
+  display: grid;
+  grid-template-columns: var(--gutter-w) minmax(0, 1fr);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.grid-allday-gutter {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 6px 7px 0 0;
+  border-right: 1px solid var(--line);
+  font-size: var(--t-1);
+  color: var(--ink-faint);
+}
+
+.grid-allday-wrap {
+  position: relative;
+  height: calc(var(--allday-h) * var(--rows) + 5px);
+}
+
+/* A chip is a row tall and the row is fixed, so the only way to make one hittable is to make the
+   row taller. That is safe here and nowhere else on the grid: the band is measured, not computed,
+   and the axis below is solved from whatever is left, so the six pixels come out of the day's
+   scale rather than out of the fit's arithmetic. */
+:root[data-touch] .grid-allday-wrap {
+  --allday-h: var(--allday-h-touch);
+}
+
+.grid-allday-rows {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  max-height: 100%;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(var(--days), minmax(0, 1fr));
+  grid-auto-rows: var(--allday-h);
+  padding: 2px 0 3px;
+}
+
+.grid-allday-rows[data-expanded] {
+  z-index: 15;
+  max-height: 42vh;
+  overflow-y: auto;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--shadow-pop);
+}
+
+/* Every surface and every piece of type on a block, built from the numbers `calTint` hands it.
+   These belong in tokens.css beside --cal-1..8 once that file can move; they are declared here for
+   the same reason --cal-quiet was, which is that the colour is set per block and cannot be resolved
+   anywhere above it. `.agenda-row` is in the
+   list because the two views are meant to read as one product; agenda.css has always taken its
+   surfaces from here, and it sets its own fills below.
+
+   The whole pill carries its calendar's colour, but not the raw hue: eight saturated blocks make a
+   week of grid unreadable, and --cal-1..8 were chosen to sit on warm paper rather than to be read
+   off. So a block is that hue held at a fixed lightness, rather than the hue mixed towards the
+   surface. Mixing was the first attempt and it fails on the cool half of the palette: #4e6484
+   blended into #f6f2e8 comes out literally grey, because the blue and the paper's yellow cancel.
+   Holding the hue and choosing the lightness keeps eight calendars telling themselves apart, and a
+   fixed lightness per level means every calendar clears the same contrast rather than eight hues
+   each landing somewhere different.
+
+   Every level is written in hsl() rather than color-mix() or oklch() on purpose. hsl() with a
+   substituted hue computes to plain rgb(), which is what anything reading a block back out of the
+   DOM and compositing the layers behind it, the contrast harness included, can actually see.
+
+   Three numbers arrive per block, from `calTint`: --cal-h, the hue; --cal-sat, how much of it,
+   which is zero for a colour that has no hue so Graphite comes out grey; and --cal-lift, how deep,
+   in points of lightness towards the paper. An event that follows its calendar lifts by nothing
+   and one of the eight hues at the levels below is exactly what it gets. An event with a colour of
+   its own arrives with the depth of that colour, which is the only thing separating Lavender from
+   Blueberry or Sage from Basil in Google's palette. A point of lift is worth a point of lightness
+   on paper and rather less in the dark, where the band a readable fill can live in is narrower. */
+.grid-event,
+.grid-chip,
+.agenda-row {
+  --cal-lift-step: 1%;
+
+  /* The rim. Carries more of the hue than the fill on purpose: it is what separates two blocks
+     that touch, and what still reads at the height a five minute event renders at. */
+  --cal-line: hsl(var(--cal-h) calc(34% * var(--cal-sat)) calc(64% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-line-quiet: hsl(var(--cal-h) calc(30% * var(--cal-sat)) calc(78% + var(--cal-lift) * var(--cal-lift-step)));
+  /* The type does not lift. It is the one thing that has to clear the same contrast whichever
+     colour the event carries, so it stays at a fixed lightness and only takes the hue. */
+  --cal-ink: hsl(var(--cal-h) calc(24% * var(--cal-sat)) 20%);
+  /* The second line, one step quieter. A filled surface has less room to be quiet in than a
+     neutral one had: much further than this and the time stops clearing 4.5:1. */
+  --cal-ink-soft: hsl(var(--cal-h) calc(20% * var(--cal-sat)) 27%);
+}
+
+:root[data-theme="dark"] :is(.grid-event, .grid-chip, .agenda-row) {
+  --cal-lift-step: -0.6%;
+
+  --cal-line: hsl(var(--cal-h) calc(30% * var(--cal-sat)) calc(45% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-line-quiet: hsl(var(--cal-h) calc(24% * var(--cal-sat)) calc(33% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-ink: hsl(var(--cal-h) calc(30% * var(--cal-sat)) 90%);
+  --cal-ink-soft: hsl(var(--cal-h) calc(22% * var(--cal-sat)) 81%);
+}
+
+/* The four surfaces a block is drawn on. The two themes are not mirror images of each other, so
+   neither the lightness nor the saturation carries over; the agenda sets its own four a step
+   quieter, because a row is several times the area of a block. */
+.grid-event,
+.grid-chip {
+  --cal-fill: hsl(var(--cal-h) calc(52% * var(--cal-sat)) calc(87% + var(--cal-lift) * var(--cal-lift-step)));
+  /* Hover, and the surface under the selection. */
+  --cal-fill-strong: hsl(var(--cal-h) calc(54% * var(--cal-sat)) calc(82% + var(--cal-lift) * var(--cal-lift-step)));
+  /* Somebody else's calendar. Still plainly that calendar's colour, just not drawn at the strength
+     of an event you can pick up. */
+  --cal-fill-quiet: hsl(var(--cal-h) calc(44% * var(--cal-sat)) calc(91% + var(--cal-lift) * var(--cal-lift-step)));
+  /* An event that is not solid yet: enough hue to name the calendar, not enough to look booked.
+     This one does not lift, because it is already as close to the surface as a fill can get. */
+  --cal-wash: hsl(var(--cal-h) calc(56% * var(--cal-sat)) 96.5%);
+}
+
+:root[data-theme="dark"] :is(.grid-event, .grid-chip) {
+  --cal-fill: hsl(var(--cal-h) calc(27% * var(--cal-sat)) calc(21% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-fill-strong: hsl(var(--cal-h) calc(29% * var(--cal-sat)) calc(26% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-fill-quiet: hsl(var(--cal-h) calc(23% * var(--cal-sat)) calc(16.5% + var(--cal-lift) * var(--cal-lift-step)));
+  --cal-wash: hsl(var(--cal-h) calc(25% * var(--cal-sat)) 12.5%);
+}
+
+/* Pinned to the band's right edge rather than given a grid row of its own, so the count cannot
+   make the band taller. The band's height is the axis's input and has to stay constant. */
+.grid-chip-more {
+  position: absolute;
+  top: 1px;
+  right: 4px;
+  z-index: 2;
+  background: var(--paper);
+  box-shadow: -8px 0 8px -4px var(--paper);
+}
+
+.grid-chip,
+.grid-chip-more,
+.grid-chip-less {
+  min-width: 0;
+  margin: 1px 2px;
+  padding: 0 8px;
+  height: calc(var(--allday-h) - 4px);
+  line-height: calc(var(--allday-h) - 4px);
+  text-align: left;
+  border-radius: var(--r-sm);
+  font-size: var(--t-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.grid-chip {
+  background: var(--cal-fill);
+  outline: 1px solid var(--cal-line);
+  outline-offset: -1px;
+  color: var(--cal-ink);
+  cursor: pointer;
+  transition: background 120ms var(--ease), box-shadow 120ms var(--ease);
+}
+
+.grid-chip:hover {
+  background: var(--cal-fill-strong);
+}
+
+/* A calendar shared free/busy only. Same rule as the blocks below: it keeps its surface, because
+   the day really is taken, and gives up its ink, because it carries no information. */
+.grid-chip[data-busy] {
+  color: var(--cal-ink-soft);
+}
+
+.grid-chip[data-readonly] {
+  background: var(--cal-fill-quiet);
+  outline-color: var(--cal-line-quiet);
+}
+
+.grid-chip[data-status="tentative"] {
+  background: var(--cal-wash);
+  outline-style: dashed;
+}
+
+.grid-chip[data-declined] {
+  background: transparent;
+  outline-color: var(--line-strong);
+  color: var(--cal-ink-soft);
+  text-decoration: line-through;
+}
+
+.grid-chip[data-pending] {
+  outline-style: dotted;
+  font-style: italic;
+}
+
+.grid-chip[data-selected] {
+  background: var(--cal-fill-strong);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.grid-chip-more,
+.grid-chip-less {
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+  transition: color 120ms var(--ease);
+}
+
+.grid-chip-more:hover,
+.grid-chip-less:hover {
+  color: var(--ink);
+}
+
+/* Body
+   ------------------------------------------------------------------------------------------- */
+
+.grid-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The escape hatch: the row height hit its floor, so this is the one case that scrolls. */
+.grid[data-overflow] .grid-body {
+  overflow-y: auto;
+}
+
+/* Every gesture on this surface is the grid's, so the webview is told to keep its hands off: a
+   press that the browser decides halfway through was a pan arrives as a pointercancel, and the
+   drag it was three pixels into disappears. */
+.grid-canvas {
+  position: relative;
+  width: 100%;
+  touch-action: none;
+}
+
+/* Except in the one state where the body really does scroll, which is the fit giving up. There a
+   finger has to be able to reach the hours below, so vertical panning goes back to the browser and
+   the sideways half of the gesture stays ours. */
+.grid[data-overflow] .grid-canvas {
+  touch-action: pan-y;
+}
+
+.grid-gutter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  width: var(--gutter-w);
+  border-right: 1px solid var(--line);
+  pointer-events: none;
+}
+
+.grid-gutter-label {
+  position: absolute;
+  right: 7px;
+  transform: translateY(1px);
+  font-size: var(--t-1);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+.grid-rules {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--gutter-w);
+  right: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.grid-rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--grid-hour);
+}
+
+.grid-rule[data-half] {
+  background: var(--grid-half);
+}
+
+/* Folded strips
+   ------------------------------------------------------------------------------------------- */
+
+.grid-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-right: 10px;
+  background: var(--fold-surface);
+  border-top: 1px solid var(--fold-line);
+  border-bottom: 1px solid var(--fold-line);
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.grid-strip:hover {
+  background: var(--event-surface-strong);
+  color: var(--ink-soft);
+}
+
+.grid-strip-range {
+  flex: none;
+  padding-left: 10px;
+  white-space: nowrap;
+}
+
+.grid-strip-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--fold-line);
+}
+
+.grid-strip-count {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Columns
+   ------------------------------------------------------------------------------------------- */
+
+.grid-cols {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--gutter-w);
+  right: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--days), minmax(0, 1fr));
+  /* Empty grid is a creation surface, so pointer events fall through to the canvas. */
+  pointer-events: none;
+}
+
+.grid-col {
+  position: relative;
+  z-index: 1;
+  border-left: 1px solid var(--line);
+}
+
+.grid-col:first-child {
+  border-left: 0;
+}
+
+.grid-col[data-today] {
+  background: var(--grid-today);
+}
+
+.grid-col[data-past] {
+  background: var(--grid-past);
+}
+
+/* Event blocks
+   ------------------------------------------------------------------------------------------- */
+
+.grid-event {
+  /* Two more values that belong in tokens.css: how wide a block has to be before it is worth
+     reading, and how long the pointer has to mean it. The width is set above the 150px the title
+     gives up its second line at, so a block that leans forward clears the breakpoint rather than
+     landing on it. */
+  --lean-w: 200px;
+  --lean-delay: 110ms;
+
+  /* The selection ring and the lift are separate layers of one shadow so that a block which is
+     both selected and leaning keeps both, without either rule having to know about the other. */
+  --ring: 0 0 0 0 transparent;
+  --lift: 0 0 0 0 transparent;
+
+  --w-own: calc(var(--w) * 100% - var(--event-gap));
+
+  position: absolute;
+  left: calc(var(--l) * 100%);
+  width: var(--w-own);
+  min-height: var(--event-min-h);
+  /* The block's own width is the only thing that knows how many lines a title can really use,
+     and in a three deep cluster that is a quarter of what the column suggests. */
+  container-type: inline-size;
+  display: flex;
+  align-items: flex-start;
+  padding: 2px 6px;
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: pointer;
+  background: var(--cal-fill);
+  /* An outline rather than a border, so the rim costs the block no width and every state below can
+     restyle it without moving the text a pixel. */
+  outline: 1px solid var(--cal-line);
+  outline-offset: -1px;
+  border-radius: var(--r-sm);
+  color: var(--cal-ink);
+  box-shadow: var(--ring), var(--lift);
+  /* No delay here, so a block falls back the moment the pointer leaves. The delay going the other
+     way is in the lean rule below. */
+  transition: width 130ms var(--ease), left 130ms var(--ease), background 120ms var(--ease),
+    box-shadow 120ms var(--ease), opacity 120ms var(--ease);
+}
+
+.grid-event:hover {
+  z-index: 3;
+  background: var(--cal-fill-strong);
+}
+
+/* Leaning forward
+   -------------------------------------------------------------------------------------------
+
+   A three deep cluster splits a day column into thirds and no title survives that. So a block
+   too narrow to read grows, on demand and temporarily, to the width it needs, over its
+   neighbours rather than pushing them: every block on the axis is absolutely positioned, so
+   nothing else moves, the row height is untouched and the axis does not shift by a pixel.
+
+   The arithmetic is the whole rule. --w-lean is the block's own width, or --lean-w if that is
+   wider, and never more than the column: a block that is already wide enough resolves to its own
+   width and does not move at all, and one in a narrow window grows to the column and stops. The
+   left edge stays put unless the wider block would hang off the column, in which case it slides
+   back by exactly the overhang. Both are pure `min`/`max`, so there is nothing to measure and
+   nothing to keep in sync with the fit.
+
+   Selection leans too, so `j` and `k` are worth as much as the pointer, but only while the
+   pointer is out of the grid. With a mouse in play hover is what says which block you mean, and
+   a block held open under the pointer would cover the one you were reaching for.
+
+   On a touchscreen selection is the only one of the two that exists, and the guard has to go with
+   the hover it was guarding: a tap leaves :hover stuck on whatever was tapped, so the canvas would
+   count as hovered for the rest of the session and a tapped block would never open. */
+.grid-event:not([data-dragging]):hover,
+.grid-canvas:not(:hover) .grid-event:not([data-dragging])[data-selected],
+:root[data-touch] .grid-event:not([data-dragging])[data-selected] {
+  --w-lean: min(calc(100% - var(--event-gap)), max(var(--w-own), var(--lean-w)));
+  --lift: var(--shadow-pop);
+
+  z-index: 5;
+  width: var(--w-lean);
+  left: min(calc(var(--l) * 100%), calc(100% - var(--w-lean) - var(--event-gap)));
+  /* Long enough that sweeping the pointer across a busy day does not set every block off, short
+     enough that meaning it feels immediate. */
+  transition: width 130ms var(--ease) var(--lean-delay), left 130ms var(--ease) var(--lean-delay),
+    background 120ms var(--ease), box-shadow 120ms var(--ease) var(--lean-delay),
+    opacity 120ms var(--ease);
+}
+
+/* A five minute event. Small type, centred, one line. The fill does the work the thickened edge
+   used to: at 12 pixels tall the block is mostly colour, which is exactly when colour reads. */
+.grid-event[data-size="bar"] {
+  align-items: center;
+  padding: 0 5px;
+}
+
+.grid-event[data-size="bar"] .grid-event-title {
+  font-size: var(--t-1);
+  line-height: 1;
+}
+
+.grid-event[data-dragging] {
+  opacity: 0.35;
+}
+
+/* Free/busy. A calendar shared at freeBusyReader returns no title at all, and on a real account
+   that is most of the grid. The block keeps its full surface, because the hour really is taken,
+   and gives up its ink and its second line, because it carries nothing else: a wall you cannot
+   book over rather than a thing you attend. */
+.grid-event[data-busy] .grid-event-title {
+  color: var(--cal-ink-soft);
+  letter-spacing: 0.02em;
+}
+
+/* Somebody else's calendar: no grips, and the whole block is drawn a shade under an event you can
+   pick up. Still obviously that calendar's colour; most of a real account is read-only, and a grid
+   that greyed all of it out would have no colour left in it. */
+.grid-event[data-readonly] {
+  background: var(--cal-fill-quiet);
+  outline-color: var(--cal-line-quiet);
+}
+
+.grid-event[data-readonly]:hover {
+  background: var(--cal-fill);
+}
+
+/* Not confirmed yet: the fill drops back to a wash and a dashed rim holds the shape, so the block
+   reads as an outline of an event rather than a booked hour. */
+.grid-event[data-status="tentative"] {
+  background: var(--cal-wash);
+  outline-style: dashed;
+  outline-color: var(--cal-line);
+}
+
+.grid-event[data-status="tentative"]:hover {
+  background: var(--cal-fill);
+}
+
+/* Turned down. Still on the grid, because the hole in the day is real, but plainly not happening:
+   no fill at all, a neutral rim, and the title struck through. It is the only state that gives up
+   its colour, which is what makes it the one that has stopped being an event. */
+.grid-event[data-declined] {
+  background: transparent;
+  outline-color: var(--line-strong);
+  color: var(--cal-ink-soft);
+}
+
+.grid-event[data-declined] .grid-event-title {
+  color: var(--cal-ink-soft);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.grid-event[data-declined]:hover {
+  background: var(--cal-wash);
+}
+
+/* Written locally, still in the outbox. Filled, because it is a real hour of your day, with a
+   broken rim and italic type because it is not whole yet. Tentative is hollow and dashed; this is
+   solid and dotted, so the two never read as the same thing. */
+.grid-event[data-pending] {
+  outline-style: dotted;
+}
+
+.grid-event[data-pending] .grid-event-title {
+  font-style: italic;
+}
+
+/* Last, so selection wins over every state above it. */
+.grid-event[data-selected] {
+  --ring: 0 0 0 1px var(--accent);
+
+  z-index: 4;
+  background: var(--cal-fill-strong);
+}
+
+.grid-event-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Clamped to the lines the block has room for, never wrapped into a column of fragments. */
+.grid-event-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--lines, 1);
+  overflow: hidden;
+  font-size: var(--t-2);
+  line-height: 1.25;
+}
+
+.grid-event-time {
+  font-size: var(--t-1);
+  line-height: 1.2;
+  color: var(--cal-ink-soft);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Narrow enough that a second line would be one word long: one line and an ellipsis reads better
+   than six fragments, and the whole title is a click away in the card. This is the block's own
+   width, not the window's, which is why it is a container query and not a media query. */
+@container (max-width: 150px) {
+  .grid-event-title {
+    -webkit-line-clamp: 1;
+  }
+
+  /* "11am · Church Str…" is worse than "11am". The place goes, the time stays. */
+  .grid-event-where {
+    display: none;
+  }
+}
+
+/* Three deep in a narrow week. A truncated "11…" under a truncated title is two ellipses saying
+   nothing, so the title keeps whatever room there is. */
+@container (max-width: 92px) {
+  .grid-event-time {
+    display: none;
+  }
+}
+
+/* Full width to grab, with a small handle that only appears on a block you are allowed to resize.
+   That is also the quickest read of whether an event is yours. */
+.grid-event-grip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--grip-h);
+  cursor: ns-resize;
+}
+
+.grid-event-grip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 22px;
+  height: 2px;
+  margin-left: -11px;
+  border-radius: var(--r-pill);
+  /* On a filled block a neutral grey handle disappears into the surface, so the grip is drawn in
+     the same hue as the rim. Ink would read as a rule struck through the title. */
+  background: var(--cal-line);
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+}
+
+.grid-event:hover .grid-event-grip::after,
+.grid-event[data-selected] .grid-event-grip::after {
+  opacity: 1;
+}
+
+.grid-event-grip[data-edge="start"] {
+  top: 0;
+}
+
+.grid-event-grip[data-edge="start"]::after {
+  top: 1px;
+}
+
+.grid-event-grip[data-edge="end"] {
+  bottom: 0;
+}
+
+.grid-event-grip[data-edge="end"]::after {
+  bottom: 1px;
+}
+
+/* Dropped on a touchscreen rather than enlarged. A grip a finger could hit is around 24px, which
+   is most of an hour long block and all of a short one, and two of them would swallow the tap that
+   opens the event: the block would become a thing you can only resize. A press is also no longer
+   free here, since it has to survive the long press before it means anything, so trading the
+   resize for a whole-block target is the better half of the trade. Resizing on a phone is the
+   editor's job, where an end time is a field rather than seven pixels of edge. */
+:root[data-touch] .grid-event-grip {
+  display: none;
+}
+
+/* Now line, and the wash over what has already gone
+   ------------------------------------------------------------------------------------------- */
+
+.grid-now {
+  position: absolute;
+  z-index: 3;
+  left: calc(100% * var(--i) / var(--days));
+  width: calc(100% / var(--days));
+  height: 0;
+  border-top: 1px solid var(--grid-now);
+  pointer-events: none;
+}
+
+.grid-now::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--grid-now);
+}
+
+.grid-now-past {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: calc(100% * var(--i) / var(--days));
+  width: calc(100% / var(--days));
+  background: var(--grid-past);
+  pointer-events: none;
+}
+
+/* Drag preview and the in-place create input
+   ------------------------------------------------------------------------------------------- */
+
+/* The ghost is the range you are dragging out, and the label is the only thing in it, so the label
+   sits on the box's centre line rather than at the top of it.
+   That is also what stops it being sliced in half. A fifteen minute drag is a thirteen pixel box
+   with about nine pixels inside the border, which is less than a line of type; the box is the
+   truth about the range and must not be padded out to fit its own caption, so the caption is
+   centred and allowed to overhang by the pixel or so it needs. It overhangs evenly, which keeps it
+   on screen at the bottom of the grid as well as the top. Sideways it still has to be contained,
+   or a long range would print across the next day, so the clipping moved onto the label itself,
+   where it costs the glyphs nothing. */
+.grid-ghost {
+  position: absolute;
+  z-index: 4;
+  left: calc(100% * var(--i) / var(--days));
+  width: calc(100% / var(--days) - var(--event-gap));
+  min-height: var(--event-min-h);
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  overflow: visible;
+  pointer-events: none;
+  background: var(--event-surface-strong);
+  border: 1px dashed var(--accent);
+  border-radius: var(--r-sm);
+}
+
+.grid-ghost-time {
+  max-width: 100%;
+  font-size: var(--t-1);
+  /* Tall enough that the label's own box holds the whole glyph, descenders included, because that
+     box is where the sideways clipping happens. */
+  line-height: 1.3;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.grid-draft {
+  position: absolute;
+  z-index: 5;
+  left: calc(100% * var(--i) / var(--days));
+  width: calc(100% / var(--days) - var(--event-gap));
+  min-height: var(--allday-h);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 3px 7px;
+  pointer-events: auto;
+  background: var(--raised);
+  border-left: var(--edge-w) solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  box-shadow: var(--shadow-pop);
+}
+
+/* The one piece of text on the grid you are meant to be able to put a cursor in, so it takes back
+   both of the things `.grid` turned off for the surface around it. */
+.grid-draft-input {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  outline: none;
+  font-size: var(--t-2);
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+.grid-draft-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.grid-draft-time {
+  font-size: var(--t-1);
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* A week on a phone
+   -------------------------------------------------------------------------------------------
+
+   Seven columns in three hundred and ninety pixels is fifty pixels a day. Nothing is readable at
+   that width and pretending otherwise is what produces a week of ellipses, so the week stops
+   trying to be a reading view and becomes what it can be: where the events are, which days are
+   busy, and a header you tap to open the day itself.
+
+   The day view is untouched. It has a whole phone to itself and reads exactly as it does on a
+   desktop. */
+
+:root[data-phone] .grid[data-view="week"] .grid-head-day {
+  gap: 4px;
+  font-size: var(--t-1);
+}
+
+/* One letter, and it is a letter rather than a lowercase abbreviation cut short: M T W T F S S is
+   a shape you read across, which is all a single character can be. */
+:root[data-phone] .grid[data-view="week"] .grid-head-name {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+:root[data-phone] .grid[data-view="week"] .grid-head-date {
+  font-size: var(--t-3);
+}
+
+:root[data-phone] .grid[data-view="week"] .grid-head-day[data-today] .grid-head-date {
+  padding: 1px 5px 2px;
+}
+
+/* The block gives up its padding before it gives up its title. The time line and the place are
+   already gone by this width, dropped by the container queries above, which measure the block
+   itself rather than the window and so were right about this before a phone existed. */
+:root[data-phone] .grid[data-view="week"] .grid-event {
+  padding: 1px 4px;
+}
+
+:root[data-phone] .grid[data-view="week"] .grid-event-title {
+  font-size: var(--t-1);
+  line-height: 1.2;
+}

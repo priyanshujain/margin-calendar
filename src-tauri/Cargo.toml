@@ -1,0 +1,60 @@
+[package]
+name = "margin-calendar"
+version = "0.1.0"
+description = "A calendar for Google Calendar"
+authors = ["Margin"]
+edition = "2021"
+
+[lib]
+name = "margin_calendar_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+# Mobile has no loopback listener to catch Google's redirect, so the OAuth answer comes back as a
+# custom URI scheme the OS routes to this app. Registered on desktop too, so both flows are one
+# code path with one difference in it rather than two.
+tauri-plugin-deep-link = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+sha2 = "0.10"
+rand = "0.8"
+url = "2"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+rrule = "0.14"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+tokio = { version = "1", features = ["sync", "time"] }
+
+# Refresh tokens are sealed with XChaCha20-Poly1305 and kept in the app data directory. There is no
+# `keyring` here on purpose: it has no Android backend at all, and on macOS it ties the item to the
+# code signature, so every rebuild re-prompts for authorization. src/google/secrets.rs states what
+# the file is and is not worth on each platform.
+chacha20poly1305 = "0.10"
+
+# There is no auto-updater and no process to restart on a phone: the store is the update channel.
+# Gated here as well as behind cfg(desktop) in lib.rs so a mobile build does not compile them at all.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
+
+# One UIKit property that wry does not set for us; stop_uikit_shrinking_the_viewport in lib.rs says
+# which one and why. These versions are the ones wry already resolves for its own iOS backend, so
+# matching them keeps a single copy of objc2 in the build rather than a second incompatible one.
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.6"
+objc2-ui-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "UIResponder",
+  "UIView",
+  "UIScrollView",
+] }
+
+[dev-dependencies]
+tempfile = "3"

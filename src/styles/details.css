@@ -1,0 +1,280 @@
+/* The event details card. It is a popover pinned to the block that was clicked, not an overlay:
+   no backdrop, no centring, and it positions itself in JS because only JS knows where the block
+   is. Everything visual it needs beyond this file comes from the shell in app.css and the
+   `.panel-button`, `.scope-*`, `.guest-*` and `.confirm-*` families in overlays.css, which it
+   shares with the editor rather than restating. */
+
+/* Wide enough for a paragraph rather than a caption: a description is the only thing in here that
+   is prose, and at 336px a pasted link was four cramped lines. Tall enough to show one without
+   scrolling, and capped well short of the window so the thing stays a popover pinned to its block
+   instead of drifting into being a modal. It only grows to what is in it, so an event with a title
+   and a time is still a short card. */
+.details-card {
+  position: fixed;
+  z-index: 18;
+  width: min(408px, calc(100vw - 16px));
+  max-height: min(560px, calc(100vh - var(--titlebar-h) - 16px));
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: var(--edge-w) solid var(--cal, var(--line-strong));
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+  outline: none;
+  /* Invisible for the one frame between mounting and being measured, so it never flashes at 0,0.
+     Opacity rather than visibility, because a hidden element cannot take the focus. */
+  opacity: 0;
+}
+
+.details-card[data-placed] {
+  opacity: 1;
+  animation: details-in 110ms var(--ease);
+}
+
+@keyframes details-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+:root[data-compact] .details-card {
+  width: min(344px, calc(100vw - 16px));
+  max-height: min(480px, calc(100vh - var(--titlebar-h) - 16px));
+}
+
+/* The one scroll region. The footer is outside it, so however long the description runs, Edit,
+   Delete and Close are where they were. */
+.details-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px 17px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.details-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.details-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: var(--t-4);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.details-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.details-badge {
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+}
+
+/* One icon column, one text column, so the rows line up whatever is in them. */
+.details-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  color: var(--ink-soft);
+}
+
+.details-row[data-block] {
+  align-items: start;
+}
+
+.details-row[data-block] > svg {
+  margin-top: 2px;
+}
+
+.details-row > svg {
+  color: var(--ink-faint);
+}
+
+.details-dot {
+  width: 8px;
+  height: 8px;
+  margin: 0 3px;
+  border-radius: 50%;
+  background: var(--cal, var(--line-strong));
+}
+
+.details-text {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink);
+  font-size: var(--t-2);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.details-text[data-soft] {
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+}
+
+/* The description, which arrives from Google as html and is rendered from a parsed tree rather
+   than as source. It is the only prose in the card, so it gets the larger of the two type sizes
+   and a looser line. It does not scroll on its own: a region that scrolls inside a card that also
+   scrolls is two things to aim at with a trackpad and a half-cut line of text saying neither. */
+.details-desc {
+  min-width: 0;
+  color: var(--ink);
+  font-size: var(--t-3);
+  line-height: 1.55;
+  /* Pasted Drive URLs are one word two hundred characters long. */
+  overflow-wrap: anywhere;
+}
+
+/* Plain text keeps the spacing it was written with. Html has had its own collapsed already and
+   carries its structure in elements, where pre-wrap would double every gap in the source. */
+.details-desc[data-plain] {
+  white-space: pre-wrap;
+}
+
+.details-desc :is(div, ul, ol) {
+  margin: 7px 0 0;
+}
+
+.details-desc :is(div, ul, ol):first-child {
+  margin-top: 0;
+}
+
+.details-desc :is(ul, ol) {
+  padding-left: 20px;
+}
+
+.details-desc li + li {
+  margin-top: 3px;
+}
+
+.details-desc code {
+  padding: 0 4px;
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+
+/* A shade heavier than the conference link's underline, because these sit inside a paragraph and
+   have to be findable in the middle of a sentence rather than on a line of their own. */
+.rich-link,
+.desc-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-faint);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 120ms var(--ease), color 120ms var(--ease);
+}
+
+.rich-link:hover,
+.desc-link:hover {
+  color: var(--accent-ink);
+  text-decoration-color: currentcolor;
+}
+
+.details-link {
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  color: var(--ink);
+  font-size: var(--t-2);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: text-decoration-color 120ms var(--ease), color 120ms var(--ease);
+}
+
+.details-link:hover {
+  color: var(--accent-ink);
+  text-decoration-color: currentcolor;
+}
+
+.details-guests {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.details-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-2);
+  line-height: 1.5;
+}
+
+.details-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--raised);
+}
+
+.details-foot .panel-button[data-side="trail"] {
+  margin-left: auto;
+}
+
+/* The two families borrowed from the editor are sized for a 560px panel. */
+.details-card .scope-option {
+  padding: 8px 11px;
+}
+
+.details-card .scope-name {
+  font-size: var(--t-3);
+}
+
+.details-card .guest-list {
+  max-height: 148px;
+}
+
+/* Escape and a click outside both close the card, but neither is discoverable, and the footer
+   Close sits below a description long enough to scroll. */
+.details-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  color: var(--ink-faint);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.details-close:hover {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+.details-head {
+  padding-right: 34px;
+}

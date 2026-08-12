@@ -1,0 +1,176 @@
+/* The command palette and the generated shortcut sheet. Both lean on `.overlay` and `.panel` from
+   app.css and only add what they genuinely need on top. */
+
+.overlay[data-align="top"] {
+  align-items: start;
+  padding-top: 12vh;
+}
+
+:root[data-compact] .overlay[data-align="top"] {
+  padding: 16px;
+}
+
+.panel.palette {
+  width: min(620px, calc(100vw - 32px));
+  max-height: min(560px, 76vh);
+}
+
+.palette-input {
+  flex: none;
+  width: 100%;
+  padding: 18px 22px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  font-size: var(--t-4);
+  outline: none;
+}
+
+.palette-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.palette-preview {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--line);
+  background: var(--raised);
+}
+
+.palette-sentence {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-2);
+  line-height: 1.5;
+}
+
+.palette-warning {
+  margin: 0;
+  color: var(--danger-ink);
+  font-size: var(--t-2);
+}
+
+.palette-empty {
+  margin: 0;
+  padding: 16px 22px 20px;
+  color: var(--ink-faint);
+  font-size: var(--t-2);
+}
+
+.palette-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.palette-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 100ms var(--ease);
+}
+
+.palette-row[data-active] {
+  background: var(--accent-wash);
+}
+
+.palette-row[data-kind="create"] .palette-label {
+  font-weight: 500;
+}
+
+.palette-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-keys {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+/* One keycap, shared by the palette rows and the sheet. */
+.key {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: var(--t-1);
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.shortcuts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px 30px;
+  align-items: start;
+}
+
+:root[data-compact] .shortcuts {
+  grid-template-columns: 1fr;
+}
+
+.shortcuts-group {
+  min-width: 0;
+}
+
+.shortcuts-heading {
+  margin: 0 0 8px;
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.shortcuts-row {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.shortcuts-keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.shortcuts-label {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--t-2);
+  line-height: 1.5;
+}
+
+.shortcuts-note {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: var(--t-1);
+}

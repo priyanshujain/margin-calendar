@@ -45,12 +45,6 @@ const SALT_NAME: &str = "tokens.salt";
 const KEY_CONTEXT: &str = "margin-calendar token store v1";
 const NONCE_LEN: usize = 24;
 
-/// The names the encrypted store used while it was still the fallback behind a credential store.
-/// Read once and migrated, so an existing install does not silently lose its accounts and ask the
-/// user to reconnect for no reason they can see.
-const LEGACY_BLOB_NAME: &str = "keychain-fallback.enc";
-const LEGACY_SALT_NAME: &str = "keychain-fallback.salt";
-
 static DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 /// Called from `auth::init_sessions` during setup, before any command can run, because this needs
@@ -114,23 +108,15 @@ fn data_dir() -> Result<PathBuf, String> {
 fn key() -> Result<[u8; 32], String> {
     let dir = data_dir()?;
     let path = dir.join(SALT_NAME);
-    let legacy = dir.join(LEGACY_SALT_NAME);
     let salt = match std::fs::read(&path) {
         Ok(bytes) if bytes.len() == 32 => bytes,
-        _ => match std::fs::read(&legacy) {
-            // Same salt, new name. Rewritten rather than renamed so an interrupted migration
-            // leaves both files readable rather than neither.
-            Ok(bytes) if bytes.len() == 32 => {
-                write_private(&path, &bytes)?;
-                bytes
-            }
-            _ => {
-                let mut bytes = vec![0u8; 32];
-                rand::thread_rng().fill_bytes(&mut bytes);
-                write_private(&path, &bytes)?;
-                bytes
-            }
-        },
+        // Absent, or too short to be a salt because a previous write was cut off. Neither case has
+        // a salt worth keeping, so there is nothing for a fresh one to destroy.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => fresh_salt(&path)?,
+        Ok(_) => fresh_salt(&path)?,
+        // A salt that exists and will not read is a different thing entirely, and writing over it
+        // would turn one transient failure into the permanent loss of every stored token. Refuse.
+        Err(e) => return Err(format!("could not read {}: {e}", path.display())),
     };
     let mut hasher = Sha256::new();
     hasher.update(KEY_CONTEXT.as_bytes());
@@ -139,11 +125,31 @@ fn key() -> Result<[u8; 32], String> {
     Ok(hasher.finalize().into())
 }
 
-/// Mixed into the key so a copied home directory does not decrypt on another machine. Empty on
-/// macOS, iOS and Android, where no such file exists and the sandbox or the file mode is doing the
-/// work instead. An empty contribution is not a weakness here: the salt is already random and
-/// per install, and this only ever adds entropy.
-fn machine_id() -> String {
+fn fresh_salt(path: &Path) -> Result<Vec<u8>, String> {
+    let mut bytes = vec![0u8; 32];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    write_private(path, &bytes)?;
+    Ok(bytes)
+}
+
+/// Mixed into the key so a copied home directory does not decrypt on another machine. The salt
+/// sits next to the ciphertext and the context below is a constant in a public binary, so this is
+/// the only thing binding a stored token to the machine it was stored on. An empty one is not a
+/// neutral contribution of no entropy, it is the absence of the binding, and a home directory
+/// lifted off that machine decrypts anywhere.
+///
+/// Deliberately empty on iOS and Android even so. The sandbox is the real boundary there, and the
+/// identifiers those platforms offer are reset by a reinstall, which would lock a user out of a
+/// token that was never in any danger.
+///
+/// Read once. On macOS it costs a process, and `key()` runs on every load and every store.
+fn machine_id() -> &'static str {
+    static ID: OnceLock<String> = OnceLock::new();
+    ID.get_or_init(read_machine_id).as_str()
+}
+
+#[cfg(target_os = "linux")]
+fn read_machine_id() -> String {
     for path in ["/etc/machine-id", "/var/lib/dbus/machine-id"] {
         if let Ok(id) = std::fs::read_to_string(path) {
             let id = id.trim();
@@ -155,18 +161,46 @@ fn machine_id() -> String {
     String::new()
 }
 
+/// `ioreg` rather than an IOKit binding, because it is a stock binary at a fixed path and one
+/// process at first use is a better trade than a core-foundation dependency for one string. The
+/// absolute path is not decoration: an app launched from Finder inherits a minimal environment.
+///
+/// `IOPlatformUUID` is stable across reboots and OS upgrades and changes with the logic board, so
+/// a repaired Mac reconnects its accounts. That is the same cost as losing the salt, and the right
+/// answer for the case this defends: a home directory restored onto different hardware.
+#[cfg(target_os = "macos")]
+fn read_machine_id() -> String {
+    let output = match std::process::Command::new("/usr/sbin/ioreg")
+        .args(["-rd1", "-c", "IOPlatformExpertDevice"])
+        .output()
+    {
+        Ok(output) if output.status.success() => output.stdout,
+        // An empty id still derives a working key, it only stops binding the token to this Mac.
+        // Failing here instead would lock the user out of a token that is perfectly good.
+        _ => return String::new(),
+    };
+    String::from_utf8_lossy(&output)
+        .lines()
+        .find_map(|line| {
+            let (_, rest) = line.split_once("\"IOPlatformUUID\"")?;
+            let (_, rest) = rest.split_once('"')?;
+            let (uuid, _) = rest.split_once('"')?;
+            Some(uuid.to_string())
+        })
+        .unwrap_or_default()
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn read_machine_id() -> String {
+    String::new()
+}
+
 fn read_blob() -> Result<BTreeMap<String, String>, String> {
     let dir = data_dir()?;
     let path = dir.join(BLOB_NAME);
     let text = match std::fs::read_to_string(&path) {
         Ok(text) => text,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            match std::fs::read_to_string(dir.join(LEGACY_BLOB_NAME)) {
-                Ok(text) => text,
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(BTreeMap::new()),
-                Err(e) => return Err(e.to_string()),
-            }
-        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(BTreeMap::new()),
         Err(e) => return Err(e.to_string()),
     };
     serde_json::from_str(&text).map_err(|e| e.to_string())
@@ -271,5 +305,23 @@ mod tests {
     #[test]
     fn a_reference_names_the_entry_and_never_the_secret() {
         assert_eq!(reference("1234"), "studio.margin.calendar/1234");
+    }
+
+    /// The point of the machine id is that a copied home directory does not decrypt elsewhere, and
+    /// the salt travels with the copy. An empty id on a desktop means that protection is not there
+    /// at all, which is what macOS did before it learned to read `IOPlatformUUID`.
+    #[test]
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    fn a_desktop_binds_the_key_to_the_machine() {
+        assert!(
+            !machine_id().is_empty(),
+            "no machine id, so a copied home directory would decrypt anywhere"
+        );
+    }
+
+    /// Reading it twice must agree, or a token sealed early in a run stops opening later in it.
+    #[test]
+    fn the_machine_id_is_stable_within_a_run() {
+        assert_eq!(machine_id(), machine_id());
     }
 }

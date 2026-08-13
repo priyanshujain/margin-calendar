@@ -23,7 +23,34 @@ export interface OpenOptions {
   view?: "day" | "week" | "agenda";
   /** Extra localStorage entries, written before the app's first script runs. */
   storage?: Record<string, string>;
+  /** Pins the browser's clock. See `clockAt`. */
+  now?: Date;
 }
+
+/**
+ * A fixed instant on the day the suite is being run, at a given hour of the pinned zone.
+ *
+ * The axis takes in the hour it is now, so the shape of the grid depends on when you run the
+ * suite: at eleven at night it carries a row and a strip that it does not carry at eleven in the
+ * morning. A test that measures the axis has to say which of those it means, the same way it says
+ * which theme and which week start it means. The one test that is *about* the clock asks for an
+ * hour the fixture leaves empty; every other one asks for the middle of the working day.
+ *
+ * Asia/Kolkata is UTC+5:30 the whole year round, so the offset can be written out.
+ */
+export function clockAt(hour: number, minute = 0): Date {
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return new Date(`${day}T${pad(hour)}:${pad(minute)}:00+05:30`);
+}
+
+/** The middle of the working day: the fixture is busy, and the clock pins nothing extra open. */
+export const MIDDAY = () => clockAt(11, 30);
 
 const SEEDED = "__test-seeded";
 
@@ -56,6 +83,7 @@ export async function openApp(page: Page, options: OpenOptions = {}): Promise<vo
     { values: seed, flag: SEEDED },
   );
 
+  if (options.now) await page.clock.setFixedTime(options.now);
   await page.goto("/");
   if ((options.view ?? "week") === "agenda") await agendaReady(page);
   else await gridReady(page);

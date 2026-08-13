@@ -5,7 +5,18 @@
 // are measured rather than asserted about the DOM.
 
 import { expect, test } from "@playwright/test";
-import { axis, blocks, box, gridFit, gridReady, headerDates, openApp, settle } from "./app";
+import {
+  MIDDAY,
+  axis,
+  blocks,
+  box,
+  clockAt,
+  gridFit,
+  gridReady,
+  headerDates,
+  openApp,
+  settle,
+} from "./app";
 
 test.describe("the grid fits the window", () => {
   test("the body is exactly the height the window left it, with nothing to scroll", async ({
@@ -71,9 +82,13 @@ test.describe("the grid fits the window", () => {
   });
 });
 
+// Every test here pins the clock to the middle of the working day. The axis takes in the hour it
+// is now when the events have left it out, so the shape of a quiet evening is not the shape of a
+// busy morning, and an axis test that did not say which one it meant would pass or fail on when it
+// was run. What the clock does to the axis is the last test in the file.
 test.describe("the axis holds still", () => {
   test("paging a week keeps the same hours on screen", async ({ page }) => {
-    await openApp(page);
+    await openApp(page, { now: MIDDAY() });
     const before = (await axis(page)).map((entry) => entry.text);
     const dates = await headerDates(page);
     expect(before.length).toBeGreaterThan(6);
@@ -95,7 +110,7 @@ test.describe("the axis holds still", () => {
   // axis is solved from what the band left over, so paging past them rescales every hour on the
   // grid. The comment at the top of GridAllDay.tsx says the band never does this.
   test("paging a week does not move the hours on screen either", async ({ page }) => {
-    await openApp(page);
+    await openApp(page, { now: MIDDAY() });
     const before = await axis(page);
     const band = (await box(page.locator(".grid-allday"))).height;
     const row = (await gridFit(page)).rowHeight;
@@ -113,7 +128,7 @@ test.describe("the axis holds still", () => {
   });
 
   test("paging back does not reflow them either", async ({ page }) => {
-    await openApp(page);
+    await openApp(page, { now: MIDDAY() });
     const before = (await axis(page)).map((entry) => entry.text);
     for (let i = 0; i < 4; i++) {
       await page.keyboard.press("h");
@@ -123,12 +138,60 @@ test.describe("the axis holds still", () => {
   });
 
   test("the empty ends of the day are folded into a strip at each end", async ({ page }) => {
-    await openApp(page);
+    await openApp(page, { now: MIDDAY() });
     const strips = page.locator(".grid-strip");
     await expect(strips).toHaveCount(2);
     // Midnight to the first event, and the last event to midnight: both say what they cover.
     await expect(strips.first()).toContainText(/12am to \d/);
     await expect(strips.last()).toContainText(/to 12am/);
+  });
+});
+
+test.describe("the hour it is now", () => {
+  // Half eleven at night, which the fixture leaves empty: the axis the events drew stops hours
+  // earlier, so without the pin there is nowhere for the line to be.
+  const LATE = () => clockAt(23, 30);
+
+  test("is on the axis even when the events stopped hours ago", async ({ page }) => {
+    await openApp(page, { now: LATE() });
+
+    expect((await axis(page)).map((entry) => entry.text)).toContain("11pm");
+    await expect(page.locator(".grid-now")).toHaveCount(1);
+
+    // On today's column, and inside the row it belongs to rather than on the strip above it.
+    const line = await box(page.locator(".grid-now"));
+    const row = (await gridFit(page)).rowHeight;
+    const eleven = (await axis(page)).find((entry) => entry.text === "11pm");
+    const canvas = await box(page.locator(".grid-canvas"));
+    expect(line.top - canvas.top).toBeGreaterThan(eleven!.y);
+    expect(line.top - canvas.top).toBeLessThan(eleven!.y + row);
+  });
+
+  test("costs one row, not the whole evening it reached over", async ({ page }) => {
+    await openApp(page, { now: LATE() });
+    const hours = (await axis(page)).map((entry) => entry.text);
+
+    // The hours between the last event and now are not on the axis; they are in a strip.
+    expect(hours).not.toContain("9pm");
+    expect(hours).not.toContain("10pm");
+    await expect(page.locator(".grid-strip", { hasText: /to 11pm/ })).toHaveCount(1);
+    // And the day still fits.
+    const fit = await gridFit(page);
+    expect(fit.canvasHeight).toBeCloseTo(fit.bodyHeight, 0);
+    expect(fit.overflow).toBe(false);
+  });
+
+  test("is gone again on a week that does not contain today", async ({ page }) => {
+    await openApp(page, { now: LATE() });
+    const before = (await axis(page)).map((entry) => entry.text);
+    expect(before).toContain("11pm");
+
+    // A whole week on, today is not one of the columns and neither is the hour it is now.
+    await page.keyboard.press("L");
+    await settle(page);
+
+    expect((await axis(page)).map((entry) => entry.text)).not.toContain("11pm");
+    await expect(page.locator(".grid-now")).toHaveCount(0);
   });
 });
 

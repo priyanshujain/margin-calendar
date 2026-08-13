@@ -40,6 +40,7 @@ import {
   toOffsetIso,
   today,
 } from "../time";
+import { useHourStart } from "../useClock";
 import { PHONE_QUERY, useMediaQuery } from "../useMedia";
 import "../styles/grid.css";
 import "../styles/folds.css";
@@ -237,6 +238,22 @@ export function GridView({ defaultCalendarId }: GridViewProps) {
 
   const timed = useMemo(() => byDay.flat(), [byDay]);
 
+  // The hour the clock is in, when today is one of the columns.
+  //
+  // The axis is drawn from the events, and at nine in the evening the events are usually behind
+  // you: the bounds end at six, the rest of the day is in the trailing strip, and the now line has
+  // nowhere to land. So the hour you are in is taken into the bounds when it falls outside them.
+  // One hour, and only the hour, so the axis gains a row rather than an evening.
+  //
+  // Keyed on the hour rather than the minute, because that is how often the answer changes. The
+  // line itself moves every minute, on its own tick, in `GridNowLine`.
+  const hourStart = useHourStart();
+  const nowBand = useMemo((): Bounds | null => {
+    if (!days.includes(startOfDay(hourStart))) return null;
+    const hour = new Date(hourStart).getHours();
+    return { start: hour, end: hour + 1 };
+  }, [days, hourStart]);
+
   // Hysteresis needs the bounds it adopted last pass, so they live in a ref rather than in state:
   // paging a week must not reflow the axis, and a render loop through state would fight that.
   const layout = useMemo(() => {
@@ -244,9 +261,23 @@ export function GridView({ defaultCalendarId }: GridViewProps) {
     const bounds = floor
       ? { start: Math.min(auto.start, floor.start), end: Math.max(auto.end, floor.end) }
       : auto;
+    // What the events and the user asked for is what the hysteresis remembers. The clock's hour is
+    // a pin laid over the top of it every hour, so it never accumulates into the axis it pins.
     previous.current = bounds;
-    return computeFit({ bounds, folds, viewportHeight: viewportH });
-  }, [timed, folds, floor, viewportH]);
+    if (!nowBand) return computeFit({ bounds, folds, viewportHeight: viewportH });
+
+    // Everything the widening reached over folds behind it. At half eleven at night the axis is
+    // one row longer and one strip taller, rather than four rows of empty evening shorter.
+    const reach: Fold[] = [
+      { start: nowBand.end, end: bounds.start },
+      { start: bounds.end, end: nowBand.start },
+    ];
+    const axis = {
+      start: Math.min(bounds.start, nowBand.start),
+      end: Math.max(bounds.end, nowBand.end),
+    };
+    return computeFit({ bounds: axis, folds: [...folds, ...reach], viewportHeight: viewportH });
+  }, [timed, folds, floor, viewportH, nowBand]);
 
   useEffect(() => {
     const signature = `${layout.bounds.start} ${layout.bounds.end}`;

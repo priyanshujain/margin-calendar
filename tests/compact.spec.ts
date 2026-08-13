@@ -3,7 +3,7 @@
 // ships with, and it is the one nobody looks at.
 
 import { expect, test } from "@playwright/test";
-import { gridFit, openApp, settle } from "./app";
+import { MIDDAY, gridFit, openApp, settle } from "./app";
 
 const MIN = { width: 880, height: 560 };
 
@@ -52,7 +52,9 @@ test("the grid still fits, and still fills the window", async ({ page }) => {
 });
 
 test("no block is painted over by the one after it", async ({ page }) => {
-  await openApp(page);
+  // The row height is the subject here, so the axis has to be the one the events drew: an hour
+  // pinned open for the clock is fewer pixels for every block on it.
+  await openApp(page, { now: MIDDAY() });
 
   // A block shorter than the minimum block height is drawn taller than its own time, which is
   // right: it has to stay hittable. It must not be drawn *under* the next block, though, or the

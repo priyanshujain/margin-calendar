@@ -4,7 +4,17 @@
 // asking a store what it thinks happened.
 
 import { expect, test } from "@playwright/test";
-import { axis, columnX, gridFit, gridReady, headerDates, hourY, openApp, settle } from "./app";
+import {
+  MIDDAY,
+  axis,
+  columnX,
+  gridFit,
+  gridReady,
+  headerDates,
+  hourY,
+  openApp,
+  settle,
+} from "./app";
 
 const view = (page: import("@playwright/test").Page) =>
   page.evaluate(() => document.documentElement.getAttribute("data-view"));
@@ -72,7 +82,8 @@ test.describe("views", () => {
   test("z folds the band under the cursor, and it is still folded after a reload", async ({
     page,
   }) => {
-    await openApp(page);
+    // Counted strips, so the clock must not be adding one of its own.
+    await openApp(page, { now: MIDDAY() });
     const fit = await gridFit(page);
     const evening = await hourY(page, "5pm");
     expect(evening).not.toBeNull();

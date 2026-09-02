@@ -203,13 +203,43 @@ export function addFold(folds: readonly Fold[], range: Fold): Fold[] {
   return normalizeFolds([...folds, range]);
 }
 
-/** Unfolds whatever band covers `hour`. Nothing there is not an error. */
-export function removeFoldAt(folds: readonly Fold[], hour: number): Fold[] {
-  return normalizeFolds(folds).filter((f) => hour < f.start || hour >= f.end);
+/**
+ * The folds with the busy hours taken out of them. A fold hides empty time and nothing else, so
+ * an event landing in a folded hour gives that hour back at once, and a fold with an event in
+ * the middle of it shows as two strips. The range itself is kept as it was: page to a span where
+ * the hour is empty again and it folds back.
+ */
+export function trimFolds(folds: readonly Fold[], busy: readonly boolean[]): Fold[] {
+  const out: Fold[] = [];
+  for (const f of normalizeFolds(folds)) {
+    let start = f.start;
+    for (let h = f.start; h < f.end; h++) {
+      if (!busy[h]) continue;
+      if (h > start) out.push({ start, end: h });
+      start = h + 1;
+    }
+    if (f.end > start) out.push({ start, end: f.end });
+  }
+  return out;
 }
 
-export function foldAt(folds: readonly Fold[], hour: number): Fold | null {
-  return normalizeFolds(folds).find((f) => hour >= f.start && hour < f.end) ?? null;
+const overlaps = (a: HourRange, b: HourRange): boolean => a.start < b.end && a.end > b.start;
+
+/**
+ * Takes an expanded strip out of the folds. The fold it came from keeps the other strips it was
+ * showing and nothing else: the hours an event was covering go too, so expanding a strip never
+ * leaves a piece of fold behind that could come back on its own once the event moves.
+ */
+export function unfoldStrip(folds: readonly Fold[], busy: readonly boolean[], strip: Fold): Fold[] {
+  const out: Fold[] = [];
+  for (const f of normalizeFolds(folds)) {
+    if (!overlaps(f, strip)) {
+      out.push(f);
+      continue;
+    }
+    for (const piece of trimFolds([f], busy)) if (!overlaps(piece, strip)) out.push(piece);
+  }
+  return out;
 }
 
 /**

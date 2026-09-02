@@ -24,6 +24,7 @@ import {
   computeBounds,
   computeFit,
   timeToY,
+  trimFolds,
   yToTime,
   type Bounds,
   type Fold,
@@ -51,6 +52,7 @@ import { GridGaps } from "./GridGaps";
 import { GridGhost } from "./GridGhost";
 import {
   MIN_EVENT_MINUTES,
+  busyHours,
   clampMinutes,
   dayMinutes,
   hourLabel,
@@ -264,7 +266,10 @@ export function GridView({ defaultCalendarId }: GridViewProps) {
     // What the events and the user asked for is what the hysteresis remembers. The clock's hour is
     // a pin laid over the top of it every hour, so it never accumulates into the axis it pins.
     previous.current = bounds;
-    if (!nowBand) return computeFit({ bounds, folds, viewportHeight: viewportH });
+    // A fold hides empty hours. Any hour an event on screen covers is given back at full scale,
+    // however it got there: typed into the palette, moved in the editor, or synced in from Google.
+    const shown = trimFolds(folds, busyHours(timed));
+    if (!nowBand) return computeFit({ bounds, folds: shown, viewportHeight: viewportH });
 
     // Everything the widening reached over folds behind it. At half eleven at night the axis is
     // one row longer and one strip taller, rather than four rows of empty evening shorter.
@@ -276,7 +281,7 @@ export function GridView({ defaultCalendarId }: GridViewProps) {
       start: Math.min(bounds.start, nowBand.start),
       end: Math.max(bounds.end, nowBand.end),
     };
-    return computeFit({ bounds: axis, folds: [...folds, ...reach], viewportHeight: viewportH });
+    return computeFit({ bounds: axis, folds: [...shown, ...reach], viewportHeight: viewportH });
   }, [timed, folds, floor, viewportH, nowBand]);
 
   useEffect(() => {
@@ -319,16 +324,6 @@ export function GridView({ defaultCalendarId }: GridViewProps) {
     }
     return out;
   }, [layout]);
-
-  /** What each strip is hiding: events with nowhere to show, not events it merely clips. */
-  const hiddenIn = useCallback(
-    (start: number, end: number) =>
-      timed.filter((item) => {
-        const { startMin, endMin } = dayMinutes(item, startOfDay(item.startMs));
-        return startMin >= start && endMin <= end;
-      }).length,
-    [timed],
-  );
 
   const unfold = useGrid((s) => s.unfold);
   const onUnfold = useCallback((range: Fold) => unfold(range), [unfold]);
@@ -781,12 +776,7 @@ export function GridView({ defaultCalendarId }: GridViewProps) {
 
           {layout.segments.map((segment) =>
             segment.kind === "strip" ? (
-              <GridStrip
-                key={`s${segment.start}`}
-                segment={segment}
-                hidden={hiddenIn(segment.start, segment.end)}
-                onUnfold={onUnfold}
-              />
+              <GridStrip key={`s${segment.start}`} segment={segment} onUnfold={onUnfold} />
             ) : null,
           )}
 

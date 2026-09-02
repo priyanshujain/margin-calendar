@@ -8,12 +8,12 @@ import {
   computeBounds,
   computeFit,
   eventSpan,
-  foldAt,
   isFolded,
   normalizeFolds,
   rawBounds,
-  removeFoldAt,
   timeToY,
+  trimFolds,
+  unfoldStrip,
   widen,
   yToTime,
   type FitEvent,
@@ -168,13 +168,62 @@ describe("folds", () => {
     ).toEqual([]);
   });
 
-  it("adds and removes by the hour under the cursor", () => {
-    const folds = addFold([{ start: 9, end: 11 }], { start: 14, end: 16 });
-    expect(folds).toHaveLength(2);
-    expect(foldAt(folds, 15)).toEqual({ start: 14, end: 16 });
-    expect(foldAt(folds, 16)).toBeNull();
-    expect(removeFoldAt(folds, 15)).toEqual([{ start: 9, end: 11 }]);
-    expect(removeFoldAt(folds, 13)).toEqual(folds);
+  it("adds a band and keeps the set normalized", () => {
+    expect(addFold([{ start: 9, end: 11 }], { start: 14, end: 16 })).toEqual([
+      { start: 9, end: 11 },
+      { start: 14, end: 16 },
+    ]);
+    expect(addFold([{ start: 9, end: 11 }], { start: 11, end: 12 })).toEqual([{ start: 9, end: 12 }]);
+  });
+});
+
+/** Hours with something in them, the way `busyHours` reports them. */
+const busyAt = (...hours: number[]): boolean[] => {
+  const busy = new Array<boolean>(24).fill(false);
+  for (const h of hours) busy[h] = true;
+  return busy;
+};
+
+describe("trimFolds", () => {
+  it("gives back the hour an event landed in and keeps the rest folded", () => {
+    expect(trimFolds([{ start: 14, end: 17 }], busyAt(16))).toEqual([{ start: 14, end: 16 }]);
+    expect(trimFolds([{ start: 14, end: 17 }], busyAt(14))).toEqual([{ start: 15, end: 17 }]);
+  });
+
+  it("splits a fold around an event in the middle of it", () => {
+    expect(trimFolds([{ start: 14, end: 18 }], busyAt(16))).toEqual([
+      { start: 14, end: 16 },
+      { start: 17, end: 18 },
+    ]);
+  });
+
+  it("drops a fold with nothing empty left in it, and leaves an empty one alone", () => {
+    expect(trimFolds([{ start: 14, end: 16 }], busyAt(14, 15))).toEqual([]);
+    expect(trimFolds([{ start: 14, end: 16 }], busyAt(13, 16))).toEqual([{ start: 14, end: 16 }]);
+  });
+});
+
+describe("unfoldStrip", () => {
+  const folds = [
+    { start: 9, end: 11 },
+    { start: 14, end: 18 },
+  ];
+
+  it("takes the strip out and leaves the other folds alone", () => {
+    expect(unfoldStrip(folds, busyAt(), { start: 14, end: 18 })).toEqual([{ start: 9, end: 11 }]);
+    expect(unfoldStrip(folds, busyAt(), { start: 0, end: 8 })).toEqual(folds);
+  });
+
+  it("keeps the other strip of a split fold and drops what the event was covering", () => {
+    expect(unfoldStrip(folds, busyAt(16), { start: 14, end: 16 })).toEqual([
+      { start: 9, end: 11 },
+      { start: 17, end: 18 },
+    ]);
+  });
+
+  it("takes a fold merged into an end strip with it", () => {
+    expect(unfoldStrip([{ start: 6, end: 10 }], busyAt(), { start: 0, end: 10 })).toEqual([]);
+    expect(unfoldStrip([{ start: 18, end: 22 }], busyAt(), { start: 18, end: 24 })).toEqual([]);
   });
 });
 

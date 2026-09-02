@@ -39,15 +39,13 @@ export const GridDay = memo(function GridDay({
       {packed.map((p) => {
         const { startMin, endMin } = dayMinutes(p.event, dayStart);
         const top = timeToY(layout, startMin);
-        const raw = timeToY(layout, endMin) - top;
-        // Both ends inside the same strip: it is hiding in there, and the strip carries the count.
-        if (raw < 1) return null;
+        const height = Math.max(timeToY(layout, endMin) - top, MIN_BLOCK_H);
         return (
           <GridEvent
             key={p.event.id}
             item={p.event}
             top={top}
-            height={Math.max(raw, MIN_BLOCK_H)}
+            height={height}
             left={p.left}
             width={p.width}
             selected={sameKey(selected, keyOf(p.event.instance))}

@@ -1,7 +1,8 @@
 // A folded band. The empty hours outside the bounds fold themselves; an interior band only folds
 // because you asked for it, with `z` or with the chip that hangs off an empty run. Either way the
-// strip says what it covers, how much is hiding in there, and which way it goes: the whole band is
-// the button, and the mark next to its range says Expand.
+// strip says what it covers and which way it goes: the whole band is the button, and the mark next
+// to its range says Expand. It never has anything to count: an hour with an event in it is not
+// folded, whatever fold it sits inside.
 
 import { memo } from "react";
 import type { Segment } from "../grid/fit";
@@ -11,11 +12,10 @@ import { Icon } from "./Icon";
 
 interface GridStripProps {
   segment: Segment;
-  hidden: number;
   onUnfold: (range: { start: number; end: number }) => void;
 }
 
-export const GridStrip = memo(function GridStrip({ segment, hidden, onUnfold }: GridStripProps) {
+export const GridStrip = memo(function GridStrip({ segment, onUnfold }: GridStripProps) {
   const range = { start: segment.start / 60, end: segment.end / 60 };
   const label = `Expand ${rangeLabel(range)}`;
   return (
@@ -34,7 +34,6 @@ export const GridStrip = memo(function GridStrip({ segment, hidden, onUnfold }: 
         <span className="grid-fold-verb">Expand</span>
       </span>
       <span className="grid-strip-rule" />
-      {hidden > 0 && <span className="grid-strip-count">{hidden}</span>}
     </button>
   );
 });

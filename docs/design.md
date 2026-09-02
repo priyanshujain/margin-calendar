@@ -23,8 +23,7 @@ always fits exactly.
 The visible range is computed from the events in the span you are looking at: floor to the
 hour before your earliest event, ceil to the hour after your latest, clamped to a minimum of
 eight hours so a quiet week does not render four enormous rows. Empty bands at the top and
-bottom fold into thin strips labelled with their range and a count of anything hiding inside.
-Click or press `z` to unfold one.
+bottom fold into thin strips labelled with their range. Click or press `z` to unfold one.
 
 The range expands immediately when it needs to, but only contracts when it would shrink by two
 hours or more. Without that hysteresis the axis flickers as you page through weeks, and a
@@ -43,6 +42,14 @@ useful thing on the screen, because it is where work goes, and folding it automa
 make a packed day look identical to an open one. But you can fold one deliberately with `z`,
 and it stays folded across navigation until you unfold it. The fold is per range, remembered
 in local state, not derived from the data.
+
+A fold only ever hides empty hours. The range is what is remembered; what the strip hides is
+that range minus whatever the events on screen cover. Create an event at four inside a fold of
+two to five, by any route, and the strip shrinks to two to four with the event at full scale
+under it. An event in the middle of a fold splits it into a strip either side. Page to a week
+where the hour is empty again and the whole range folds back. Expanding a strip takes exactly
+that strip out of its fold: another strip the same fold was showing stays, and the hours an
+event was covering are not kept to come back later.
 
 One consequence worth stating plainly: within the unfolded region the scale is strictly
 linear, so a block twice as tall is an event twice as long, always. That property is why the

@@ -11,9 +11,11 @@ import {
   blocks,
   box,
   clockAt,
+  columnX,
   gridFit,
   gridReady,
   headerDates,
+  hourY,
   openApp,
   settle,
 } from "./app";
@@ -144,6 +146,73 @@ test.describe("the axis holds still", () => {
     // Midnight to the first event, and the last event to midnight: both say what they cover.
     await expect(strips.first()).toContainText(/12am to \d/);
     await expect(strips.last()).toContainText(/to 12am/);
+  });
+});
+
+test.describe("folds", () => {
+  test("an event created inside a fold takes its hour back and leaves the rest folded", async ({
+    page,
+  }) => {
+    await openApp(page, { now: MIDDAY() });
+    // The fixture's last event ends at half six, so the evening is the one empty run long enough
+    // to fold and then land an event in. Hold it open first, then fold it by hand.
+    await page.locator(".grid-strip", { hasText: /to 12am/ }).click();
+    await settle(page);
+    const nine = await hourY(page, "9pm");
+    expect(nine).not.toBeNull();
+    const fit = await gridFit(page);
+    await page.mouse.move(await columnX(page, 3), nine! + fit.rowHeight / 2);
+    await page.keyboard.press("z");
+    await settle(page);
+    await expect(page.locator(".grid-strip", { hasText: "7pm to 12am" })).toHaveCount(1);
+
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.keyboard.type("Yoga 11pm");
+    await page.keyboard.press("Enter");
+    await settle(page);
+
+    // The hour the event landed in is back on the axis with the event in it at full scale, and
+    // the empty hours before it are still folded.
+    const yoga = page.locator(".grid-event", { hasText: "Yoga" });
+    await expect(yoga).toBeVisible();
+    expect((await box(yoga)).height).toBeGreaterThan(fit.rowHeight / 2);
+    const hours = (await axis(page)).map((entry) => entry.text);
+    expect(hours).toContain("11pm");
+    expect(hours).not.toContain("8pm");
+    await expect(page.locator(".grid-strip", { hasText: "7pm to 11pm" })).toHaveCount(1);
+    await expect(page.locator(".grid-strip", { hasText: "7pm to 12am" })).toHaveCount(0);
+  });
+
+  test("a remembered fold over a busy hour shows that hour, and only that hour", async ({
+    page,
+  }) => {
+    // 4pm has a quarter hour block on every workday; 5pm has nothing on any day.
+    await openApp(page, {
+      now: MIDDAY(),
+      storage: { "margincal-folds": '[{"start":16,"end":18}]' },
+    });
+    const hours = (await axis(page)).map((entry) => entry.text);
+    expect(hours).toContain("4pm");
+    expect(hours).not.toContain("5pm");
+    await expect(page.locator(".grid-strip", { hasText: "5pm to 6pm" })).toHaveCount(1);
+    await expect(page.locator(".grid-strip", { hasText: "4pm to 6pm" })).toHaveCount(0);
+  });
+
+  test("expanding one strip of a split fold leaves the other where it was", async ({ page }) => {
+    // 6pm has a block on every day, so a fold from 5pm to 9pm shows as a strip either side of it,
+    // the later one merged into the strip at the end of the day.
+    await openApp(page, {
+      now: MIDDAY(),
+      storage: { "margincal-folds": '[{"start":17,"end":21}]' },
+    });
+    const five = page.locator(".grid-strip", { hasText: "5pm to 6pm" });
+    await expect(five).toHaveCount(1);
+    await expect(page.locator(".grid-strip", { hasText: "7pm to 12am" })).toHaveCount(1);
+
+    await five.click();
+    await settle(page);
+    expect((await axis(page)).map((entry) => entry.text)).toContain("5pm");
+    await expect(page.locator(".grid-strip", { hasText: "7pm to 12am" })).toHaveCount(1);
   });
 });
 

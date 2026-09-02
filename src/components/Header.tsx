@@ -1,8 +1,6 @@
 // The only persistent chrome. It carries the date range, the view switcher and the current time
 // range, and on macOS the traffic lights float over it, so it costs no extra height.
 
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { MouseEvent as ReactMouseEvent } from "react";
 import { Icon } from "./Icon";
 import { useCalendarView, spanFor, type View } from "../store/useCalendarView";
 import { useOverlays } from "../store/useOverlays";
@@ -10,7 +8,6 @@ import { useSync } from "../store/useSync";
 import { useTheme } from "../store/useTheme";
 import { addDays, formatRange } from "../time";
 import { keyLabel, keysFor } from "../keys/bindings";
-import { isDesktop } from "../ipc";
 import type { CommandId } from "../keys/commands";
 
 // Exported where the phone bar shows the same thing: two rows of chrome that disagreed about which
@@ -55,17 +52,10 @@ export function Header() {
   const { from, to } = spanFor(view, anchor);
   const step = moveDay;
 
-  // Double click to zoom, the way a native title bar does. Tauri's drag region only handles this
-  // when the header itself is the event target, and the layout children cover it end to end, so
-  // it is wired explicitly. A double click on a control is not a title bar gesture.
-  const onDoubleClick = (e: ReactMouseEvent<HTMLElement>) => {
-    if (!isDesktop) return;
-    if ((e.target as HTMLElement).closest("button, input, select, a")) return;
-    void getCurrentWindow().toggleMaximize();
-  };
-
+  // Dragging and double click to zoom both come from Tauri's drag region script, which skips
+  // buttons on its own. A second toggle from here would undo the first.
   return (
-    <header className="titlebar" data-tauri-drag-region onDoubleClick={onDoubleClick}>
+    <header className="titlebar" data-tauri-drag-region>
       <div className="lead" data-tauri-drag-region>
         <button
           className="icon-button"

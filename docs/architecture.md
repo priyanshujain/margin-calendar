@@ -127,8 +127,13 @@ assume away.
 ## Platforms
 
 macOS uses the overlay title bar with the header row padded for the traffic lights, as margin
-does. Linux has no traffic lights, so that padding is conditional. Linux builds need
-`libwebkit2gtk-4.1-dev` and ship as AppImage and deb.
+does. The lights are moved down to the header's centre line (`trafficLightPosition` in
+`tauri.conf.json`), because AppKit places them for a 32pt title bar and the header is 46px.
+Closing the window on macOS hides it rather than quitting, the way WhatsApp and Slack do: the
+process stays in the Dock with sync running, a Dock click brings the window back, and Cmd+Q
+quits. Both halves live in `lib.rs`. Linux has no traffic lights, so that padding is
+conditional, and closing the window there quits. Linux builds need `libwebkit2gtk-4.1-dev` and
+ship as AppImage and deb.
 
 ## Order of work
 

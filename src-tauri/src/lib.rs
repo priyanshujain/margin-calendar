@@ -219,6 +219,20 @@ fn watch_for_the_consent_tab_closing(window: &tauri::WebviewWindow) {
     });
 }
 
+/// The other half of closing on macOS. The red button and Cmd+W hide the window rather than
+/// destroy it (`on_window_event` in `run`), the way WhatsApp and Slack do: the app stays in the
+/// Dock with sync still running, and Cmd+Q is what quits. AppKit does nothing of its own for a
+/// Dock click when it can see no window, so bringing it back is on us. `unminimize` covers the
+/// yellow button, which lands here for the same reason.
+#[cfg(target_os = "macos")]
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // generate_context! first, so the updater plugin registers only when the merged config
@@ -286,7 +300,17 @@ pub fn run() {
             });
     }
 
-    builder
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        });
+    }
+
+    let app = builder
         .invoke_handler(tauri::generate_handler![
             google::accounts_list,
             google::account_connect,
@@ -301,6 +325,19 @@ pub fn run() {
             sync::sync_status,
             sync::sync_flush
         ])
-        .run(context)
-        .expect("error while running Margin Calendar");
+        .build(context)
+        .expect("error while building Margin Calendar");
+
+    app.run(|app, event| {
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Reopen {
+            has_visible_windows: false,
+            ..
+        } = event
+        {
+            show_main_window(app);
+        }
+        #[cfg(not(target_os = "macos"))]
+        let _ = (app, event);
+    });
 }

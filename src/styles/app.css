@@ -112,6 +112,10 @@ select {
   padding: var(--safe-top) 14px 0;
   background: var(--shell);
   border-bottom: 1px solid var(--line);
+  /* Tauri's drag region lets the second click of a double click through to the webview so it can
+     zoom on mouseup, and WebKit would otherwise read that click as "select the nearest word". */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* The macOS traffic lights float over this row, so it opens a lane for them and costs no extra

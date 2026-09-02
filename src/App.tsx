@@ -27,7 +27,7 @@ import { useSync } from "./store/useSync";
 import { notify } from "./store/useToast";
 import { useCompact, usePhone, useTouch } from "./useMedia";
 import { syncFlush } from "./api/sync";
-import { isDesktop, isTauri, live, type AuthEvent, type SyncStatus } from "./ipc";
+import { isDesktop, isMacDesktop, isTauri, live, type AuthEvent, type SyncStatus } from "./ipc";
 
 /** Long enough for sync_flush's own 1s lock wait plus its 4s drain budget. */
 const FLUSH_TIMEOUT_MS = 5500;
@@ -91,8 +91,11 @@ function App() {
   // `isDesktop` genuinely means desktop here: there is no close to intercept on a phone, and the
   // window commands live in a capability that platform does not get, so this would be a rejected
   // IPC call rather than a no-op. The outbox still drains on the next launch either way.
+  //
+  // Not on macOS, where closing the window hides it (lib.rs) and the process, sync loop included,
+  // carries on behind it. A listener here would be the thing that destroyed the window instead.
   useEffect(() => {
-    if (!isDesktop) return;
+    if (!isDesktop || isMacDesktop) return;
     const win = getCurrentWindow();
     const unlisten = win.onCloseRequested(async (event) => {
       if (useSync.getState().pendingWrites === 0) return;

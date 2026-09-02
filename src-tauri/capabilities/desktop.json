@@ -7,7 +7,6 @@
   "permissions": [
     "core:window:allow-destroy",
     "core:window:allow-start-dragging",
-    "core:window:allow-toggle-maximize",
     "updater:default",
     "process:allow-restart"
   ]

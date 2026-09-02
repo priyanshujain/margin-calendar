@@ -1,6 +1,6 @@
 [package]
 name = "margin-calendar"
-version = "0.0.2"
+version = "0.0.3"
 description = "A calendar for Google Calendar"
 authors = ["Margin"]
 edition = "2021"

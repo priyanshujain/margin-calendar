@@ -32,10 +32,12 @@ flickering axis destroys the positional memory that makes a keyboard-driven cale
 The hour you are in is the one exception to the range being the events' business. At half
 eleven at night the events stopped hours ago, so the now line has nowhere to land and the app
 stops telling you where in the day you are, which is most of what a calendar is open for. So
-when today is on screen the axis takes that hour in, and folds away everything it reached over
-to get there: the axis grows by a row and a strip, not by an evening. Page to a week that does
-not contain today and it goes again, which is the one place the axis is allowed to move under
-you.
+when today is on screen that hour is held at full scale exactly as an hour with an event in it
+is: whatever strip reaches over it splits around it, the one outside the range and any fold
+you made alike. The axis grows by a row and a strip, not by an evening, and the range itself
+does not move, so the pin never leaks into the bounds the grid remembers. Page to a week that
+does not contain today and the row goes again, which is the one place the axis is allowed to
+move under you.
 
 Interior gaps stay at full scale. A three-hour hole on a Wednesday afternoon is the most
 useful thing on the screen, because it is where work goes, and folding it automatically would

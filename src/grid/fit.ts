@@ -60,6 +60,11 @@ export interface FitInput {
   previous?: Bounds;
   /** Interior bands the user folded with `z`, in hours. Order and overlap do not matter. */
   folds?: readonly Fold[];
+  /**
+   * Hours kept at full scale whatever covers them, indexed by hour: the ones with an event in
+   * them, and the hour it is now. A strip that reaches over one of these splits around it.
+   */
+  hold?: readonly boolean[];
   /** Pixels available to the grid body, below the day bar and the all-day band. */
   viewportHeight: number;
   /** Pins the axis, skipping both the event scan and hysteresis. Still clamped and widened. */
@@ -204,17 +209,17 @@ export function addFold(folds: readonly Fold[], range: Fold): Fold[] {
 }
 
 /**
- * The folds with the busy hours taken out of them. A fold hides empty time and nothing else, so
+ * The folds with the held hours taken out of them. A fold hides empty time and nothing else, so
  * an event landing in a folded hour gives that hour back at once, and a fold with an event in
  * the middle of it shows as two strips. The range itself is kept as it was: page to a span where
- * the hour is empty again and it folds back.
+ * the hour is empty again and it folds back. The hour it is now is held the same way.
  */
-export function trimFolds(folds: readonly Fold[], busy: readonly boolean[]): Fold[] {
+export function trimFolds(folds: readonly Fold[], held: readonly boolean[]): Fold[] {
   const out: Fold[] = [];
   for (const f of normalizeFolds(folds)) {
     let start = f.start;
     for (let h = f.start; h < f.end; h++) {
-      if (!busy[h]) continue;
+      if (!held[h]) continue;
       if (h > start) out.push({ start, end: h });
       start = h + 1;
     }
@@ -230,14 +235,14 @@ const overlaps = (a: HourRange, b: HourRange): boolean => a.start < b.end && a.e
  * showing and nothing else: the hours an event was covering go too, so expanding a strip never
  * leaves a piece of fold behind that could come back on its own once the event moves.
  */
-export function unfoldStrip(folds: readonly Fold[], busy: readonly boolean[], strip: Fold): Fold[] {
+export function unfoldStrip(folds: readonly Fold[], held: readonly boolean[], strip: Fold): Fold[] {
   const out: Fold[] = [];
   for (const f of normalizeFolds(folds)) {
     if (!overlaps(f, strip)) {
       out.push(f);
       continue;
     }
-    for (const piece of trimFolds([f], busy)) if (!overlaps(piece, strip)) out.push(piece);
+    for (const piece of trimFolds([f], held)) if (!overlaps(piece, strip)) out.push(piece);
   }
   return out;
 }
@@ -246,8 +251,10 @@ export function unfoldStrip(folds: readonly Fold[], busy: readonly boolean[], st
  * Solves the row height for the viewport and lays the day out.
  *
  * The bands outside the bounds fold into a strip at each end, interior folds become strips where
- * they sit, and the hours left over share whatever height remains. When that share falls below
- * `minRowHeight` the row height sticks there and `overflow` says the grid has to scroll.
+ * they sit, and the hours left over share whatever height remains. A held hour is never inside a
+ * strip: whichever of those reaches over it splits around it. When the hours' share of the height
+ * falls below `minRowHeight` the row height sticks there and `overflow` says the grid has to
+ * scroll.
  */
 export function computeFit(input: FitInput): FitLayout {
   const stripHeight = input.stripHeight ?? STRIP_H;
@@ -258,19 +265,10 @@ export function computeFit(input: FitInput): FitLayout {
     ? widen(input.bounds.start, input.bounds.end)
     : computeBounds(input.events ?? [], input.previous ?? DEFAULT_BOUNDS);
 
-  const boundStart = bounds.start * 60;
-  const boundEnd = bounds.end * 60;
-
-  const interior = normalizeFolds(input.folds ?? []).map((f) => ({
-    start: clamp(f.start * 60, boundStart, boundEnd),
-    end: clamp(f.end * 60, boundStart, boundEnd),
-  }));
-
-  const folded = mergeRanges([
-    { start: 0, end: boundStart },
-    ...interior,
-    { start: boundEnd, end: MINUTES_PER_DAY },
-  ]);
+  const folded = trimFolds(
+    [{ start: 0, end: bounds.start }, ...(input.folds ?? []), { start: bounds.end, end: 24 }],
+    input.hold ?? [],
+  ).map((f) => ({ start: f.start * 60, end: f.end * 60 }));
 
   let foldedMinutes = 0;
   for (const f of folded) foldedMinutes += f.end - f.start;

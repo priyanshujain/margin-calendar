@@ -15,7 +15,7 @@ import {
   type Fold,
 } from "../grid/fit";
 import { loadFolds, saveFolds } from "../grid/folds";
-import { bandAt, busyHours, type Placed } from "./GridModel";
+import { bandAt, heldHours } from "./GridModel";
 
 export type DragMode = "create" | "move" | "resize-start" | "resize-end";
 
@@ -44,12 +44,13 @@ interface GridState {
   floor: Bounds | null;
   layout: FitLayout | null;
   days: number[];
-  items: Placed[];
+  /** The hours no fold may hide: see `heldHours`. Published with the layout it was solved for. */
+  held: boolean[];
   hoverHour: number | null;
   drag: Drag | null;
   draft: Draft | null;
   saving: boolean;
-  publish: (layout: FitLayout, days: number[], items: Placed[]) => void;
+  publish: (layout: FitLayout, days: number[], held: boolean[]) => void;
   setHoverHour: (hour: number | null) => void;
   setDrag: (drag: Drag | null) => void;
   setDraft: (draft: Draft | null) => void;
@@ -66,12 +67,12 @@ export const useGrid = create<GridState>((set, get) => ({
   floor: null,
   layout: null,
   days: [],
-  items: [],
+  held: heldHours([], null),
   hoverHour: null,
   drag: null,
   draft: null,
   saving: false,
-  publish: (layout, days, items) => set({ layout, days, items }),
+  publish: (layout, days, held) => set({ layout, days, held }),
   setHoverHour: (hoverHour) => set((s) => (s.hoverHour === hoverHour ? {} : { hoverHour })),
   setDrag: (drag) => set({ drag }),
   setDraft: (draft) => set({ draft }),
@@ -81,7 +82,7 @@ export const useGrid = create<GridState>((set, get) => ({
     set({ folds });
   },
   unfold: (range) => {
-    const folds = saveFolds(unfoldStrip(get().folds, busyHours(get().items), range));
+    const folds = saveFolds(unfoldStrip(get().folds, get().held, range));
     // An out-of-bounds band has no fold to remove, so widening the floor is what holds it open.
     const base = get().floor ?? get().layout?.bounds ?? DEFAULT_BOUNDS;
     set({
@@ -90,7 +91,7 @@ export const useGrid = create<GridState>((set, get) => ({
     });
   },
   toggleFold: (hour) => {
-    const { layout, hoverHour, items } = get();
+    const { layout, hoverHour, held } = get();
     if (!layout) return;
     const at = hour ?? hoverHour;
     if (at === null || at === undefined) return;
@@ -100,7 +101,7 @@ export const useGrid = create<GridState>((set, get) => ({
       get().unfold({ start: segment.start / 60, end: segment.end / 60 });
       return;
     }
-    const band = bandAt(items, layout.bounds, h);
+    const band = bandAt(held, layout.bounds, h);
     if (band) get().fold(band);
   },
   unfoldAll: () => {

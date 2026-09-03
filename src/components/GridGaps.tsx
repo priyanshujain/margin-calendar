@@ -15,7 +15,7 @@
 import { memo, useMemo } from "react";
 import { isFolded, timeToY, type Fold, type FitLayout } from "../grid/fit";
 import { TOUCH_QUERY, useMediaQuery } from "../useMedia";
-import { busyHours, rangeLabel, vars } from "./GridModel";
+import { rangeLabel, vars } from "./GridModel";
 import { useGrid } from "./GridStore";
 import { Icon } from "./Icon";
 
@@ -53,17 +53,18 @@ export const FOLD_ICON_SIZE = 16;
 const MIN_GAP_H = 24;
 
 /**
- * The empty run around `hour`: nothing scheduled on any visible day, nothing already folded, both
- * ends stopped by the bounds. Null when the hour is busy, folded or off the axis.
+ * The empty run around `hour`: nothing scheduled on any visible day, not the hour it is now,
+ * nothing already folded, both ends stopped by the bounds. Null when the hour is held, folded or
+ * off the axis.
  *
  * This is deliberately not `bandAt`, which is what `z` folds and which walks straight through an
  * existing fold. What the mouse offers has to be exactly what the label says, so a run cut in two
  * by a fold reads as two runs and collapses as the half you pointed at. Folding merges them anyway.
  */
-export function gapAt(layout: FitLayout, busy: readonly boolean[], hour: number): Fold | null {
+export function gapAt(layout: FitLayout, held: readonly boolean[], hour: number): Fold | null {
   const { start: lo, end: hi } = layout.bounds;
   if (hour < lo || hour >= hi) return null;
-  const free = (h: number) => !busy[h] && !isFolded(layout, h * 60);
+  const free = (h: number) => !held[h] && !isFolded(layout, h * 60);
   if (!free(hour)) return null;
   let start = hour;
   let end = hour + 1;
@@ -73,11 +74,11 @@ export function gapAt(layout: FitLayout, busy: readonly boolean[], hour: number)
 }
 
 /** Every empty run on the axis, which is what a pointer with no hover has to be given instead. */
-export function allGaps(layout: FitLayout, busy: readonly boolean[]): Fold[] {
+export function allGaps(layout: FitLayout, held: readonly boolean[]): Fold[] {
   const out: Fold[] = [];
   let hour = layout.bounds.start;
   while (hour < layout.bounds.end) {
-    const gap = gapAt(layout, busy, hour);
+    const gap = gapAt(layout, held, hour);
     if (!gap) {
       hour++;
       continue;
@@ -90,20 +91,19 @@ export function allGaps(layout: FitLayout, busy: readonly boolean[]): Fold[] {
 
 export const GridGaps = memo(function GridGaps() {
   const layout = useGrid((s) => s.layout);
-  const items = useGrid((s) => s.items);
+  const held = useGrid((s) => s.held);
   const hoverHour = useGrid((s) => s.hoverHour);
   // Booleans rather than the objects themselves: this must not repaint on every pointermove.
   const gesturing = useGrid((s) => s.drag !== null || s.draft !== null);
   const fold = useGrid((s) => s.fold);
   const touch = useMediaQuery(TOUCH_QUERY);
 
-  const busy = useMemo(() => busyHours(items), [items]);
   const gaps = useMemo(() => {
     if (!layout) return [];
-    if (touch) return allGaps(layout, busy);
-    const hovered = hoverHour === null ? null : gapAt(layout, busy, hoverHour);
+    if (touch) return allGaps(layout, held);
+    const hovered = hoverHour === null ? null : gapAt(layout, held, hoverHour);
     return hovered ? [hovered] : [];
-  }, [layout, busy, hoverHour, touch]);
+  }, [layout, held, hoverHour, touch]);
 
   if (!layout || gesturing) return null;
 

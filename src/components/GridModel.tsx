@@ -294,17 +294,28 @@ export function busyHours(items: readonly Placed[]): boolean[] {
 }
 
 /**
- * The band `z` would fold at this hour: the whole empty run around it. Null on a busy hour, since
- * a fold hides empty time and an hour with an event in it would come straight back. Interior gaps
- * never fold themselves, so this only runs on demand.
+ * The hours the grid keeps at full scale whatever fold or bound covers them: every hour an event
+ * touches, and the hour it is now when today is one of the columns. This is the one definition,
+ * and everything that hides an hour or offers to hide one goes through it.
  */
-export function bandAt(items: readonly Placed[], bounds: Bounds, hour: number): Fold | null {
-  const busy = busyHours(items);
-  if (busy[hour]) return null;
+export function heldHours(items: readonly Placed[], nowHour: number | null): boolean[] {
+  const held = busyHours(items);
+  if (nowHour !== null && nowHour >= 0 && nowHour < 24) held[nowHour] = true;
+  return held;
+}
+
+/**
+ * The band `z` would fold at this hour: the whole empty run around it, stopped by the held hours
+ * and the bounds. Null on a held hour, since a fold hides empty time and a fold over an hour with
+ * an event in it, or the hour it is now, would come straight back. Interior gaps never fold
+ * themselves, so this only runs on demand.
+ */
+export function bandAt(held: readonly boolean[], bounds: Bounds, hour: number): Fold | null {
+  if (held[hour]) return null;
   let start = hour;
   let end = hour + 1;
-  while (start > bounds.start && !busy[start - 1]) start--;
-  while (end < bounds.end && !busy[end]) end++;
+  while (start > bounds.start && !held[start - 1]) start--;
+  while (end < bounds.end && !held[end]) end++;
   return { start, end };
 }
 

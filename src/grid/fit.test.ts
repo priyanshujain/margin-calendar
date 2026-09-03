@@ -333,6 +333,65 @@ describe("computeFit", () => {
     });
     expect(layout.bounds).toEqual({ start: 8, end: 18 });
   });
+
+  it("opens a held hour outside the bounds as one row between two strips", () => {
+    const layout = computeFit({ bounds: { start: 8, end: 20 }, hold: busyAt(1), viewportHeight: 600 });
+    expect(layout.segments.map((s) => [s.kind, s.start, s.end])).toEqual([
+      ["strip", 0, 60],
+      ["hours", 60, 120],
+      ["strip", 120, 480],
+      ["hours", 480, 1200],
+      ["strip", 1200, 1440],
+    ]);
+    // The row is the clock's, not the events': the bounds it reports are still theirs.
+    expect(layout.bounds).toEqual({ start: 8, end: 20 });
+    expect(layout.unfoldedHours).toBe(13);
+    expect(layout.rowHeight).toBeCloseTo((600 - 3 * STRIP_H) / 13, 10);
+  });
+
+  it("opens a held hour at the edge of the day without a strip beyond it", () => {
+    const layout = computeFit({ bounds: { start: 8, end: 20 }, hold: busyAt(23), viewportHeight: 600 });
+    expect(layout.segments.map((s) => [s.kind, s.start, s.end])).toEqual([
+      ["strip", 0, 480],
+      ["hours", 480, 1200],
+      ["strip", 1200, 1380],
+      ["hours", 1380, 1440],
+    ]);
+  });
+
+  it("opens a held hour inside a fold that merged into the end strip", () => {
+    const layout = computeFit({
+      bounds: { start: 8, end: 20 },
+      folds: [{ start: 0, end: 8 }],
+      hold: busyAt(1),
+      viewportHeight: 600,
+    });
+    expect(layout.segments.map((s) => [s.kind, s.start, s.end])).toEqual([
+      ["strip", 0, 60],
+      ["hours", 60, 120],
+      ["strip", 120, 480],
+      ["hours", 480, 1200],
+      ["strip", 1200, 1440],
+    ]);
+  });
+
+  it("opens a held hour inside an interior fold", () => {
+    const layout = computeFit({
+      bounds: { start: 8, end: 20 },
+      folds: [{ start: 12, end: 16 }],
+      hold: busyAt(14),
+      viewportHeight: 600,
+    });
+    expect(layout.segments.map((s) => [s.kind, s.start, s.end])).toEqual([
+      ["strip", 0, 480],
+      ["hours", 480, 720],
+      ["strip", 720, 840],
+      ["hours", 840, 900],
+      ["strip", 900, 960],
+      ["hours", 960, 1200],
+      ["strip", 1200, 1440],
+    ]);
+  });
 });
 
 describe("timeToY and yToTime", () => {

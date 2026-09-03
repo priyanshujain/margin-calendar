@@ -250,6 +250,24 @@ test.describe("the hour it is now", () => {
     expect(fit.overflow).toBe(false);
   });
 
+  test("is on the axis inside a fold you made that covers it", async ({ page }) => {
+    // A fold over the whole evening, made on some earlier day and remembered since. It used to
+    // swallow the clock's hour along with the trailing strip it merged into, and the line with it.
+    await openApp(page, {
+      now: LATE(),
+      storage: { "margincal-folds": JSON.stringify([{ start: 19, end: 24 }]) },
+    });
+
+    expect((await axis(page)).map((entry) => entry.text)).toContain("11pm");
+    await expect(page.locator(".grid-now")).toHaveCount(1);
+    // The fold is still there, split around the hour it is now rather than dropped.
+    await expect(page.locator(".grid-strip", { hasText: "7pm to 11pm" })).toHaveCount(1);
+    await expect(page.locator(".grid-strip", { hasText: /to 12am/ })).toHaveCount(0);
+    // And the bounds the grid remembers are the events', not the clock's.
+    const saved = await page.evaluate(() => localStorage.getItem("margincal-bounds"));
+    expect(JSON.parse(saved ?? "null")).toEqual({ start: 7, end: 20 });
+  });
+
   test("is gone again on a week that does not contain today", async ({ page }) => {
     await openApp(page, { now: LATE() });
     const before = (await axis(page)).map((entry) => entry.text);

@@ -180,72 +180,57 @@ jobs:
           done
           gh release edit "$TAG" --repo "$REPO" --draft=false --latest
 
-  # Arch gets its own package rather than the AppImage. The AppImage carries Ubuntu's GTK stack,
-  # which cannot talk to a modern Wayland compositor and silently falls back to Xwayland; a package
-  # linked against the system webkit2gtk runs as a native Wayland client. Runs after publish so it
+  # Nix is the Linux package. The AppImage carries Ubuntu's GTK stack, which cannot talk to a modern
+  # Wayland compositor and silently falls back to Xwayland; the Nix package relinks the published deb
+  # against nixpkgs' webkit2gtk and runs as a native Wayland client. Runs after publish so the flake
   # can only ever point at a release that survived the manifest check.
-  aur:
+  nix:
     needs: [prepare, publish]
     runs-on: ubuntu-latest
     steps:
-      # The tag, not main, so the template and the licence are the ones this release shipped.
+      # main rather than the tag: the pin lands on main, and the tag was cut before the artifact
+      # it needs the hash of existed.
       - uses: actions/checkout@v7
         with:
-          ref: ${{ needs.prepare.outputs.tag }}
+          ref: main
 
-      - name: Render the PKGBUILD for this release
+      - name: Pin the flake to this release
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
           REPO: ${{ github.repository }}
         run: |
           URL="https://github.com/$REPO/releases/download/v$VERSION/Margin.Calendar_${VERSION}_amd64.deb"
-          # From the published asset, so the checksum is of the artifact users will actually fetch.
+          # From the published asset, so the hash is of the artifact users will actually fetch.
           curl -fsSL --retry 3 -o package.deb "$URL"
-          SHA=$(sha256sum package.deb | cut -d' ' -f1)
-          # The PKGBUILD fetches the licence from the tag, so checksum the copy at that same tag.
-          LICENSE_SHA=$(sha256sum LICENSE | cut -d' ' -f1)
-          sed -e "s/@VERSION@/$VERSION/g" \
-              -e "s/@SHA256@/$SHA/g" \
-              -e "s/@LICENSE_SHA256@/$LICENSE_SHA/g" \
-              packaging/aur/PKGBUILD.in > PKGBUILD
-          echo "pkgver $VERSION, deb $SHA, licence $LICENSE_SHA"
+          HASH="sha256-$(openssl dgst -sha256 -binary package.deb | base64)"
+          jq -n --arg v "$VERSION" --arg h "$HASH" '{version: $v, hash: $h}' > nix/release.json
+          cat nix/release.json
 
-      - name: Generate .SRCINFO
-        # makepkg is Arch-only and refuses to run as root, hence the container. It runs as the
-        # runner's own uid so nothing in the bind-mounted checkout changes owner; chowning it to a
-        # container user left the workspace unwritable for the push step. --printsrcinfo parses the
-        # PKGBUILD, it does not build anything.
-        run: |
-          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/w" -w /w \
-            archlinux:base-devel makepkg --printsrcinfo > .SRCINFO
-          cat .SRCINFO
+      - uses: cachix/install-nix-action@v31
 
-      - name: Push to the AUR
+      # Building it is the check: a wrong hash, a library autoPatchelf cannot find or a broken flake
+      # stops here rather than on someone's machine.
+      - name: Build the package
+        run: nix build .#margin-calendar --print-build-logs
+
+      - name: Commit the pin
         env:
-          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
-          if [ -z "$AUR_SSH_PRIVATE_KEY" ]; then
-            echo "::warning::AUR_SSH_PRIVATE_KEY is not set, so the AUR package was built but not published. The release itself is unaffected."
-            exit 0
-          fi
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
-          chmod 600 ~/.ssh/aur
-          ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
-          git clone ssh://aur@aur.archlinux.org/margin-calendar-bin.git aur
-          cp PKGBUILD .SRCINFO aur/
-          cd aur
-          # A package that does not exist yet clones as an empty repo, where the local branch name
-          # is whatever git defaults to. The AUR only accepts master.
-          git checkout -B master
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add PKGBUILD .SRCINFO
-          if git diff --cached --quiet; then
-            echo "AUR is already at this version, nothing to push."
-            exit 0
-          fi
-          git commit -m "margin-calendar-bin $VERSION"
-          git push origin master
+          git add nix/release.json
+          git commit -m "point the nix package at v$VERSION"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              break
+            fi
+            if [ "$attempt" = "5" ]; then
+              echo "::error::main kept advancing; could not push the nix pin after 5 attempts. The release is published; rerun this job."
+              exit 1
+            fi
+            echo "main advanced; rebasing and retrying ($attempt)…"
+            sleep 3
+          done

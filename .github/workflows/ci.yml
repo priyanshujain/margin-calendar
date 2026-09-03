@@ -68,3 +68,14 @@ jobs:
       - name: Test
         working-directory: src-tauri
         run: cargo test
+
+  # The flake at whatever release nix/release.json pins. A broken flake or lock, or a deb that no
+  # longer patches against current nixpkgs, shows up here rather than at the next release.
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: cachix/install-nix-action@v31
+
+      - run: nix build .#margin-calendar --print-build-logs

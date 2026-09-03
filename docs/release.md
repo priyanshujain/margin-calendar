@@ -36,27 +36,47 @@ targets, at which point the publish gate wants `windows-x86_64` too.
 Phones do not come from this pipeline at all. The store is their update channel, and what building
 for one takes is in [mobile.md](mobile.md).
 
-## Arch
+## Linux
 
-Arch gets its own package, `margin-calendar-bin` on the AUR, pushed by the release workflow after
-the manifest check passes. It is worth the extra moving part: the AppImage bundles Ubuntu's GTK
-stack, and a bundled `libwayland-client` cannot talk to a current compositor, so on Hyprland the
-AppImage silently falls back to Xwayland. The packaged build links against the system
+Linux installs come from Nix rather than from the AppImage. The AppImage bundles Ubuntu's GTK
+stack, and a bundled `libwayland-client` cannot talk to a current compositor, so on Hyprland it
+silently falls back to Xwayland. The Nix package relinks the published `.deb` against nixpkgs' own
 `webkit2gtk-4.1` and runs as a native Wayland client.
+
+Installing, and later updating:
+
+```
+nix profile install github:priyanshujain/margin-calendar
+nix profile upgrade margin-calendar
+```
+
+On NixOS or under home-manager, add `github:priyanshujain/margin-calendar` as a flake input and
+either put `margin-calendar.packages.x86_64-linux.default` in the package list or apply
+`margin-calendar.overlays.default` and use `pkgs.margin-calendar`. Updating is then
+`nix flake update margin-calendar` and a rebuild.
+
+"Check for updates" inside a Nix install still checks. It reports the newer version and the
+upgrade command rather than installing anything, because the package's wrapper sets
+`MARGIN_CALENDAR_PACKAGED_BY=nix` and the app asks for that before it would touch its own binary,
+which in the store it could not replace anyway.
 
 It is a binary package by necessity rather than laziness. The Google OAuth client is embedded at
 compile time from a file that is deliberately not in the repo, so anything built from source on
-someone else's machine would run and then tell them Google Calendar is not set up. The PKGBUILD
-therefore repackages the published `.deb`, whose payload is already a normal `/usr` tree.
+someone else's machine would run and then tell them Google Calendar is not set up.
+`nix/package.nix` therefore unpacks the published `.deb`, whose payload is already a normal `/usr`
+tree, and `autoPatchelfHook` points its libraries at nixpkgs.
 
-`packaging/aur/PKGBUILD.in` is the template. The workflow fills in the version and the sha256 of
-the artifact that was actually published, generates `.SRCINFO` with `makepkg` in an Arch container,
-and pushes to `ssh://aur@aur.archlinux.org/margin-calendar-bin.git` using `AUR_SSH_PRIVATE_KEY`.
-Without that secret the job renders the package, says so, and does not fail the release.
+`nix/release.json` is the pin: the version and the hash of the `.deb` that was actually published.
+The `nix` job in the release workflow writes it after the manifest check passes, builds the package
+once to prove the pin is good, and commits it to main. That commit is what Nix users consume:
+`github:priyanshujain/margin-calendar` means main, and main means the latest release that built. A
+tag's own flake still points at the release before it, because the tag is cut before the artifact
+exists. If the job fails, the release is out and Nix stays a version behind until the job is rerun.
 
-The `license=('custom')` line is a placeholder for the fact that this repo has no licence file at
-all. Nothing stops the package publishing, but a package on the AUR that nobody has licensed is
-worth fixing before anyone else builds on it.
+The flake is x86_64-linux only, which is the one Linux target the release builds. `flake.lock`
+pins nixpkgs for anyone installing through the flake directly; the overlay uses whatever nixpkgs
+the host already has. CI builds the package on every push, so a nixpkgs bump that breaks the
+patching shows up before a release does.
 
 ## What the build needs
 

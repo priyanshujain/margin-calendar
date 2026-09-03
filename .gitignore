@@ -42,3 +42,7 @@ xcuserdata/
 # Screenshots & Playwright MCP artifacts
 .playwright-mcp/
 /*.png
+
+# Nix build output
+/result
+/result-*

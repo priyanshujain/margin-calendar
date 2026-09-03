@@ -133,7 +133,7 @@ Closing the window on macOS hides it rather than quitting, the way WhatsApp and 
 process stays in the Dock with sync running, a Dock click brings the window back, and Cmd+Q
 quits. Both halves live in `lib.rs`. Linux has no traffic lights, so that padding is
 conditional, and closing the window there quits. Linux builds need `libwebkit2gtk-4.1-dev` and
-ship as AppImage and deb.
+ship as AppImage and deb, and the deb is what the Nix package in `nix/package.nix` relinks.
 
 ## Order of work
 

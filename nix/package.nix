@@ -17,6 +17,8 @@
   gsettings-desktop-schemas,
   gtk3,
   libsoup_3,
+  mesa,
+  runtimeShell,
   webkitgtk_4_1,
   xdg-utils,
 }:
@@ -57,20 +59,45 @@ stdenv.mkDerivation {
     webkitgtk_4_1
   ];
 
+  # The binary sits under lib/ so wrapGAppsHook wraps the launcher in bin/ and nothing else.
+  #
+  # Outside NixOS there is no /run/opengl-driver, so the libglvnd this build links finds no EGL
+  # driver and WebKit aborts its web process on the spot. The launcher points it at nixpkgs' Mesa
+  # instead, unless something like nixGL already did. The xdg-open shim strips that again for the
+  # browser the app opens, which has a Mesa of its own.
   installPhase = ''
     runHook preInstall
-    mkdir -p $out
-    cp -r usr/bin usr/share $out/
+    mkdir -p $out/bin $out/lib/margin-calendar/bin
+    cp usr/bin/margin-calendar $out/lib/margin-calendar/
+    cp -r usr/share $out/
     mv "$out/share/applications/Margin Calendar.desktop" $out/share/applications/margin-calendar.desktop
+
+    cat > $out/bin/margin-calendar <<LAUNCHER
+    #!${runtimeShell}
+    if [ ! -d /run/opengl-driver ]; then
+      : "\''${__EGL_VENDOR_LIBRARY_FILENAMES:=$(echo ${mesa}/share/glvnd/egl_vendor.d/*.json)}"
+      : "\''${LIBGL_DRIVERS_PATH:=${mesa}/lib/dri}"
+      : "\''${GBM_BACKENDS_PATH:=${mesa}/lib/gbm}"
+      export __EGL_VENDOR_LIBRARY_FILENAMES LIBGL_DRIVERS_PATH GBM_BACKENDS_PATH
+    fi
+    exec $out/lib/margin-calendar/margin-calendar "\$@"
+    LAUNCHER
+
+    cat > $out/lib/margin-calendar/bin/xdg-open <<SHIM
+    #!${runtimeShell}
+    unset __EGL_VENDOR_LIBRARY_FILENAMES LIBGL_DRIVERS_PATH GBM_BACKENDS_PATH
+    exec ${xdg-utils}/bin/xdg-open "\$@"
+    SHIM
+
+    chmod +x $out/bin/margin-calendar $out/lib/margin-calendar/bin/xdg-open
     runHook postInstall
   '';
 
-  # The app opens the Google consent page and "Report an issue" through xdg-open. The variable is
-  # how it knows the store owns the binary, so "Check for updates" points at Nix instead of trying
-  # to replace itself.
+  # The variable is how the app knows the store owns the binary, so "Check for updates" points at
+  # Nix instead of trying to replace itself.
   preFixup = ''
     gappsWrapperArgs+=(
-      --prefix PATH : ${lib.makeBinPath [ xdg-utils ]}
+      --prefix PATH : $out/lib/margin-calendar/bin
       --set MARGIN_CALENDAR_PACKAGED_BY nix
     )
   '';

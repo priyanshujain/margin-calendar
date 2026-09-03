@@ -2,7 +2,10 @@
 // line moves on, and the hour the fit holds open around it.
 //
 // Both schedule off the clock rather than off an interval, so a tab that was asleep and a machine
-// that woke up catch up on the next tick instead of drifting further out every hour.
+// that woke up catch up on the next tick instead of drifting further out every hour. A timer is
+// still a timer, though: one set before the lid closed can fire long after its wall-clock
+// deadline, and a hidden window's timers run late or not at all. So the window coming back, as a
+// focus or a visibility change, is read as a tick of its own.
 //
 // They are separate hooks because they are separate rerenders. The minute belongs to the one
 // component that draws the line; putting the fit on that tick would solve the whole axis sixty
@@ -32,16 +35,24 @@ function useTick<T>(read: (now: number) => T, next: (now: number) => number): T 
     let timer = 0;
     const schedule = () => {
       const now = Date.now();
-      timer = window.setTimeout(
-        () => {
-          setValue(read(Date.now()));
-          schedule();
-        },
-        Math.max(0, next(now) - now),
-      );
+      timer = window.setTimeout(tick, Math.max(0, next(now) - now));
+    };
+    const tick = () => {
+      window.clearTimeout(timer);
+      setValue(read(Date.now()));
+      schedule();
+    };
+    const woke = () => {
+      if (document.visibilityState === "visible") tick();
     };
     schedule();
-    return () => window.clearTimeout(timer);
+    document.addEventListener("visibilitychange", woke);
+    window.addEventListener("focus", woke);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", woke);
+      window.removeEventListener("focus", woke);
+    };
     // Both callbacks are module-level functions in every caller, so there is nothing to rebind.
   }, [read, next]);
   return value;

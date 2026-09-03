@@ -37,7 +37,7 @@ build:
       *)      echo "just: no local build for $(uname -s); macOS and Linux are the desktop targets." >&2; exit 1 ;;
     esac
 
-# Build and install, replacing whatever version is already installed.
+# Build, install over whatever version is already installed, and start the new one.
 install: build
     #!/usr/bin/env bash
     set -euo pipefail
@@ -75,6 +75,7 @@ _install-macos:
     cp -R "$src" "$dest"
     version=$(defaults read "$dest/Contents/Info.plist" CFBundleShortVersionString 2> /dev/null || echo "?")
     echo "Installed $version to $dest"
+    open "$dest"
 
 _install-linux:
     #!/usr/bin/env bash

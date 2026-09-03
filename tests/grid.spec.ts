@@ -280,6 +280,52 @@ test.describe("the hour it is now", () => {
     expect((await axis(page)).map((entry) => entry.text)).not.toContain("11pm");
     await expect(page.locator(".grid-now")).toHaveCount(0);
   });
+
+  // The two below are about an app left open, so the clock is a running one rather than a pinned
+  // instant: `install` lets it be moved, and the strip that reads "8pm to 10pm" only exists once
+  // the hour it holds open has moved from nine to ten.
+  test("moves on with the clock while the app stays open", async ({ page }) => {
+    await page.clock.install({ time: clockAt(21, 58) });
+    await openApp(page);
+    await page.clock.pauseAt(clockAt(21, 59));
+    const before = (await axis(page)).map((entry) => entry.text);
+    expect(before).toContain("9pm");
+    expect(before).not.toContain("10pm");
+
+    await page.clock.runFor(2 * 60_000);
+
+    await expect(page.locator(".grid-strip", { hasText: "8pm to 10pm" })).toHaveCount(1);
+    const after = (await axis(page)).map((entry) => entry.text);
+    expect(after).toContain("10pm");
+    expect(after).not.toContain("9pm");
+    await expect(page.locator(".grid-now")).toHaveCount(1);
+  });
+
+  test("catches up when the clock jumped, as it does after the lid was closed", async ({ page }) => {
+    await page.clock.install({ time: clockAt(21, 30) });
+    await openApp(page);
+    await page.clock.pauseAt(clockAt(21, 31));
+    expect((await axis(page)).map((entry) => entry.text)).toContain("9pm");
+
+    // Asleep, the wall clock moves on and the timers do not: one set for the top of the hour is
+    // still waiting for the rest of its half hour when the machine wakes at five past ten. What
+    // the app gets is one minute of being awake.
+    await page.clock.setSystemTime(clockAt(22, 5));
+    await page.clock.runFor(60_000);
+
+    await expect(page.locator(".grid-strip", { hasText: "8pm to 10pm" })).toHaveCount(1);
+    const hours = (await axis(page)).map((entry) => entry.text);
+    expect(hours).toContain("10pm");
+    expect(hours).not.toContain("9pm");
+    await expect(page.locator(".grid-now")).toHaveCount(1);
+
+    const line = await box(page.locator(".grid-now"));
+    const row = (await gridFit(page)).rowHeight;
+    const ten = (await axis(page)).find((entry) => entry.text === "10pm");
+    const canvas = await box(page.locator(".grid-canvas"));
+    expect(line.top - canvas.top).toBeGreaterThan(ten!.y);
+    expect(line.top - canvas.top).toBeLessThan(ten!.y + row);
+  });
 });
 
 test.describe("the all-day band", () => {

@@ -6,7 +6,9 @@
 machine expects to find applications: `/Applications` on macOS, or the package manager on Linux.
 It is the same command whether or not the app is already installed, so it doubles as the update.
 On macOS it asks a running copy to quit first, because replacing a bundle under a live process
-leaves it half old and half new. `just uninstall` reverses it and leaves the data directory alone.
+leaves it half old and half new, and starts the new one once it is in place, so the copy on screen
+is never older than the copy installed. `just uninstall` reverses it and leaves the data directory
+alone.
 
 The local build skips the dmg and builds only the `.app`, since nothing about copying a bundle
 into place needs a disk image and building one is the slowest part of a mac bundle. That makes a

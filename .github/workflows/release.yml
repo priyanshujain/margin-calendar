@@ -211,12 +211,13 @@ jobs:
           echo "pkgver $VERSION, deb $SHA, licence $LICENSE_SHA"
 
       - name: Generate .SRCINFO
-        # makepkg is Arch-only and refuses to run as root, hence the container and the throwaway
-        # user. --printsrcinfo parses the PKGBUILD, it does not build anything.
+        # makepkg is Arch-only and refuses to run as root, hence the container. It runs as the
+        # runner's own uid so nothing in the bind-mounted checkout changes owner; chowning it to a
+        # container user left the workspace unwritable for the push step. --printsrcinfo parses the
+        # PKGBUILD, it does not build anything.
         run: |
-          docker run --rm -v "$PWD:/w" -w /w archlinux:base-devel bash -c '
-            useradd -m builder && chown -R builder /w
-            su builder -c "makepkg --printsrcinfo" > .SRCINFO'
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/w" -w /w \
+            archlinux:base-devel makepkg --printsrcinfo > .SRCINFO
           cat .SRCINFO
 
       - name: Push to the AUR

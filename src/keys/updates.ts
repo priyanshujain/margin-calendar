@@ -4,10 +4,17 @@
 
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
+import { packagedBy } from "../api/updates";
 import { isDesktop } from "../ipc";
 import { notify } from "../store/useToast";
 
 let running = false;
+
+/** A package manager owns the binary, so the update is announced and left to it. */
+function updateHint(manager: string, version: string): string {
+  if (manager === "nix") return `${version} is out. Update with: nix profile upgrade margin-calendar`;
+  return `${version} is out. Update it through ${manager}`;
+}
 
 export async function checkForUpdates(): Promise<void> {
   if (!isDesktop || running) return;
@@ -16,6 +23,11 @@ export async function checkForUpdates(): Promise<void> {
     const update = await check();
     if (!update) {
       notify("Margin Calendar is up to date");
+      return;
+    }
+    const manager = await packagedBy();
+    if (manager) {
+      notify(updateHint(manager, update.version));
       return;
     }
     notify(`Installing ${update.version}…`);

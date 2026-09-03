@@ -233,6 +233,16 @@ fn show_main_window(app: &tauri::AppHandle) {
     }
 }
 
+/// The package manager that owns this install, when one does. The Nix wrapper sets it to "nix":
+/// the binary lives in a read-only store there, so the updater may announce a version but not
+/// install it.
+#[tauri::command]
+fn packaged_by() -> Option<String> {
+    std::env::var("MARGIN_CALENDAR_PACKAGED_BY")
+        .ok()
+        .filter(|manager| !manager.is_empty())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // generate_context! first, so the updater plugin registers only when the merged config
@@ -323,7 +333,8 @@ pub fn run() {
             sync::event_delete,
             sync::sync_now,
             sync::sync_status,
-            sync::sync_flush
+            sync::sync_flush,
+            packaged_by
         ])
         .build(context)
         .expect("error while building Margin Calendar");

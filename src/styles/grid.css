@@ -434,6 +434,12 @@
   pointer-events: none;
 }
 
+/* The drag preview and the create card live in the columns, so they have to clear the fold strips
+   and gap chips. */
+.grid-cols:has(.grid-ghost, .quick-create) {
+  z-index: 3;
+}
+
 .grid-col {
   position: relative;
   z-index: 1;

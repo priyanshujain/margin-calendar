@@ -5,7 +5,7 @@
 // the browser laid out, and each test failed before the fix that sits next to it.
 
 import { expect, test, type Page } from "@playwright/test";
-import { MIDDAY, box, openApp, settle } from "./app";
+import { MIDDAY, box, columnX, drag, gridFit, hourY, openApp, settle } from "./app";
 
 interface Point {
   x: number;
@@ -258,5 +258,67 @@ test.describe("cards over the grid", () => {
     await page.locator(".details-body").dispatchEvent("scroll");
     await settle(page);
     await expect(card).toBeVisible();
+  });
+
+  test("the drag preview draws over a fold strip it crosses", async ({ page }) => {
+    await openApp(page, {
+      now: MIDDAY(),
+      storage: { "margincal-folds": '[{"start":17,"end":18}]' },
+    });
+    const strip = await box(page.locator(".grid-strip", { hasText: "5pm to 6pm" }));
+    const fit = await gridFit(page);
+    const x = await columnX(page, 5);
+    const middle = strip.top + strip.height / 2;
+
+    await page.mouse.move(x, strip.top - fit.rowHeight / 2);
+    await page.mouse.down();
+    await page.mouse.move(x, strip.top - 10, { steps: 6 });
+    await page.mouse.move(x, strip.bottom + fit.rowHeight / 2, { steps: 6 });
+    const ghost = await box(page.locator(".grid-ghost"));
+    expect(ghost.top < strip.top && ghost.bottom > strip.bottom).toBe(true);
+    // The ghost and its columns let the pointer through, which hit testing honours, so this lets
+    // it land on them for one look. It changes nothing about what is painted on top.
+    const hit = await page.evaluate(
+      ({ x, y }) => {
+        const style = document.createElement("style");
+        style.textContent = ".grid-cols, .grid-ghost { pointer-events: auto !important; }";
+        document.head.append(style);
+        const top = document.elementFromPoint(x, y)?.closest(".grid-ghost") !== null;
+        style.remove();
+        return top;
+      },
+      { x, y: middle },
+    );
+    expect(hit).toBe(true);
+    await page.mouse.up();
+  });
+
+  test("the create card draws over a fold strip it overlaps", async ({ page }) => {
+    await openApp(page, { now: MIDDAY() });
+    const strip = await box(page.locator(".grid-strip", { hasText: /to 12am/ }));
+    const fit = await gridFit(page);
+    const x = await columnX(page, 2);
+    await drag(page, { x, y: strip.top - fit.rowHeight + 3 }, { x, y: strip.top - 3 });
+    const card = page.locator(".quick-create-card");
+    await expect(card).toBeVisible();
+    const rect = await box(card);
+    expect(rect.bottom > strip.top && rect.top < strip.bottom).toBe(true);
+
+    const covered = await page.evaluate(
+      ({ rect, strip }) => {
+        const el = document.querySelector(".quick-create-card")!;
+        const misses: string[] = [];
+        const top = Math.max(rect.top, strip.top) + 1;
+        const bottom = Math.min(rect.bottom, strip.bottom) - 1;
+        for (let y = top; y <= bottom; y += 2)
+          for (let x = rect.left + 4; x < rect.right - 4; x += 20) {
+            const hit = document.elementFromPoint(x, y);
+            if (!hit || !el.contains(hit)) misses.push(`${x},${y} ${hit?.className}`);
+          }
+        return misses;
+      },
+      { rect, strip },
+    );
+    expect(covered).toEqual([]);
   });
 });

@@ -202,7 +202,7 @@ export function devInstances(from: number, to: number): Instance[] {
       // An overlapping cluster three deep, plus a briefly-colliding long one.
       out.push(timed({ cal: "cal-personal", summary: "Design review with the platform team", day, from: [11, 0], minutes: 60, attendees: 4, conference: true, location: "Meeting room 3", colorId: "11" }, n++));
       out.push(timed({ cal: "cal-personal", summary: "1:1 with Sam", day, from: [11, 15], minutes: 30, attendees: 2, colorId: "5" }, n++));
-      out.push(timed({ cal: "cal-meetup", summary: "Antithesis x Bengaluru Systems Meetup: deterministic simulation testing in practice", day, from: [11, 30], minutes: 150, location: "Church Street, Bengaluru" }, n++));
+      out.push(timed({ cal: "cal-meetup", summary: "Antithesis x Bengaluru Systems Meetup: deterministic simulation testing in practice", day, from: [11, 30], minutes: 150, location: "Church Street, Bengaluru", description: "RSVP at https://luma.com/join/meetup.\nTalks start at noon." }, n++));
     }
     if (offset % 5 === 0) {
       out.push(timed({ cal: "cal-personal", summary: "Tentative: coffee", day, from: [15, 0], minutes: 45, status: "tentative" }, n++));

@@ -143,6 +143,7 @@ function DetailsCard({ target, anchor }: DetailsCardProps) {
     const onDown = (e: PointerEvent) => {
       const el = card.current;
       if (el && e.target instanceof Node && el.contains(e.target)) return;
+      if (e.target instanceof Element && e.target.closest(".link-prompt")) return;
       close();
     };
     document.addEventListener("pointerdown", onDown, true);

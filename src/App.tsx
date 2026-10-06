@@ -15,6 +15,7 @@ import { Settings } from "./components/Settings";
 import { Accounts } from "./components/Accounts";
 import { CommandPalette } from "./palette/CommandPalette";
 import { ShortcutsSheet } from "./keys/Shortcuts";
+import { LinkPrompt } from "./components/LinkPrompt";
 import { Toast } from "./components/Toast";
 import { SearchOverlay } from "./components/SearchOverlay";
 
@@ -132,6 +133,7 @@ function App() {
       <SearchOverlay />
       <CommandPalette />
       <ShortcutsSheet />
+      <LinkPrompt />
       <Toast />
     </div>
   );

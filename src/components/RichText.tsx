@@ -11,6 +11,7 @@
 
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { isTauri } from "../ipc";
+import { askToOpen } from "../store/useLinkPrompt";
 import { notify } from "../store/useToast";
 import type { DescNode, DescTag } from "./EventDetailsHtml";
 import "../styles/rich.css";
@@ -38,7 +39,7 @@ export function RichText({ nodes }: { nodes: readonly DescNode[] }) {
         if (node.tag === "a") {
           // A real anchor, so it is focusable and announces itself as a link, but the navigation is
           // ours: letting the webview follow it would replace the app with a web page and leave no
-          // way back. `openLink` sends it to the browser instead.
+          // way back. It asks first, then `openLink` sends it to the browser.
           return (
             <a
               key={at}
@@ -48,13 +49,13 @@ export function RichText({ nodes }: { nodes: readonly DescNode[] }) {
               rel="noreferrer noopener"
               onClick={(e) => {
                 e.preventDefault();
-                if (node.href) openLink(node.href);
+                if (node.href) askToOpen(node.href);
               }}
               // Middle click never reaches `onClick`, and a webview asked to open a second window
               // is its own kind of stranded. Same destination, same way out.
               onAuxClick={(e) => {
                 e.preventDefault();
-                if (e.button === 1 && node.href) openLink(node.href);
+                if (e.button === 1 && node.href) askToOpen(node.href);
               }}
             >
               <RichText nodes={node.children} />

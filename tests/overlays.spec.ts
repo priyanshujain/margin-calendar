@@ -134,3 +134,38 @@ test("the theme switch actually repaints", async ({ page }) => {
   );
   expect(await paper()).not.toBe(light);
 });
+
+test("a url in a description is a link that asks before it opens", async ({ page }) => {
+  await openApp(page, { view: "day" });
+  await page.locator(".grid-event", { hasText: "Antithesis" }).first().click();
+  await expect(page.locator(".details-card[data-placed]")).toBeVisible();
+
+  const link = page.locator(".details-desc a", { hasText: "https://luma.com/join/meetup" });
+  await expect(link).toHaveText("https://luma.com/join/meetup");
+  await expect(link).toHaveCSS("text-decoration-line", "underline");
+
+  await page.evaluate(() => {
+    const opened: string[] = [];
+    (window as unknown as { opened: string[] }).opened = opened;
+    window.open = (url) => {
+      opened.push(String(url));
+      return null;
+    };
+  });
+  const opened = () => page.evaluate(() => (window as unknown as { opened: string[] }).opened);
+
+  await link.click();
+  const prompt = page.getByRole("alertdialog");
+  await expect(prompt).toContainText("Do you want to open this page?");
+  await expect(page.locator(".details-card")).toBeVisible();
+
+  await prompt.getByRole("button", { name: "Cancel" }).click();
+  await expect(prompt).toHaveCount(0);
+  await expect(page.locator(".details-card")).toBeVisible();
+  expect(await opened()).toEqual([]);
+
+  await link.click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Open" }).click();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  expect(await opened()).toEqual(["https://luma.com/join/meetup"]);
+});

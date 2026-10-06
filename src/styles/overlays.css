@@ -713,3 +713,12 @@
   flex: none;
   margin-right: 2px;
 }
+
+.link-prompt-panel {
+  width: min(400px, calc(100vw - 32px));
+  padding: 18px 20px;
+}
+
+.link-prompt-url {
+  overflow-wrap: anywhere;
+}

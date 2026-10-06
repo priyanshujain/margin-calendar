@@ -223,8 +223,49 @@ export function safeHref(raw: string | null | undefined): string | null {
 export function parseDescription(raw: string | null | undefined): Description {
   const source = raw ?? "";
   if (!source.trim()) return { plain: true, nodes: [] };
-  if (!hasMarkup(source)) return { plain: true, nodes: tidy(plainNodes(source), null) };
-  return { plain: false, nodes: tidy(htmlNodes(source), null) };
+  if (!hasMarkup(source)) return { plain: true, nodes: linkify(tidy(plainNodes(source), null)) };
+  return { plain: false, nodes: linkify(tidy(htmlNodes(source), null)) };
+}
+
+const BARE_URL = /https?:\/\/[^\s<>"]+/gi;
+
+/** Trailing punctuation belongs to the sentence, and a `)` only to the URL if it opened one. */
+function trimUrl(url: string): string {
+  let end = url.length;
+  while (end > 0) {
+    const ch = url[end - 1];
+    if (".,;:!?'\"".includes(ch)) end -= 1;
+    else if (ch === ")" && !url.slice(0, end).includes("(")) end -= 1;
+    else break;
+  }
+  return url.slice(0, end);
+}
+
+/** URLs pasted as text become links. Text already inside a link is left alone. */
+function linkify(nodes: readonly DescNode[]): DescNode[] {
+  const out: DescNode[] = [];
+  for (const node of nodes) {
+    if (node.kind === "element") {
+      out.push(node.tag === "a" ? node : { ...node, children: linkify(node.children) });
+      continue;
+    }
+    if (node.kind !== "text") {
+      out.push(node);
+      continue;
+    }
+    let from = 0;
+    for (const match of node.text.matchAll(BARE_URL)) {
+      const url = trimUrl(match[0]);
+      const href = safeHref(url);
+      if (!href) continue;
+      const at = match.index ?? 0;
+      if (at > from) out.push({ kind: "text", text: node.text.slice(from, at) });
+      out.push({ kind: "element", tag: "a", href, children: [{ kind: "text", text: url }] });
+      from = at + url.length;
+    }
+    if (from < node.text.length) out.push({ kind: "text", text: node.text.slice(from) });
+  }
+  return out;
 }
 
 /** Plain text: the newlines are the whole structure, and everything else is left alone. */

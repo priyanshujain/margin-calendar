@@ -45,14 +45,13 @@
 
 /* Findable in the middle of a sentence rather than only on a line of its own. */
 .rich-link {
-  color: var(--ink);
+  color: var(--link);
   text-decoration: underline;
-  text-decoration-color: var(--ink-faint);
   text-underline-offset: 2px;
+  cursor: pointer;
   transition: text-decoration-color 120ms var(--ease), color 120ms var(--ease);
 }
 
 .rich-link:hover {
-  color: var(--accent-ink);
-  text-decoration-color: currentcolor;
+  text-decoration-thickness: 2px;
 }

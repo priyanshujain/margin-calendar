@@ -79,6 +79,7 @@
   --accent-ink: #100e0b;
   --accent-wash: rgba(35, 32, 27, 0.08);
   --accent-contrast: #faf7f0;
+  --link: #1f5fbf;
   --selection: rgba(35, 32, 27, 0.14);
   --glass: rgba(252, 251, 247, 0.86);
   --scrim: rgba(35, 32, 27, 0.28);
@@ -132,6 +133,7 @@
   --accent-ink: #ffffff;
   --accent-wash: rgba(239, 233, 220, 0.12);
   --accent-contrast: #1a1714;
+  --link: #7fb0ff;
   --selection: rgba(239, 233, 220, 0.18);
   --glass: rgba(33, 30, 25, 0.88);
   /* The light scrim over a dark page dimmed nothing, so panels floated on shadow alone. */

@@ -288,3 +288,33 @@ describe("hostile input", () => {
     expect(textOf(parse("<<<<>>>>text"))).toContain("text");
   });
 });
+
+describe("bare urls", () => {
+  const links = (raw: string) =>
+    elementsOf(parseDescription(raw).nodes)
+      .filter((el) => el.tag === "a")
+      .map((el) => el.href);
+
+  it("become links in plain text, without the sentence's punctuation", () => {
+    const raw = "Get info at: https://luma.com/7ostf0gu?pk=g-oYgj.\nJoin (https://luma.com/join/x) now";
+    expect(links(raw)).toEqual(["https://luma.com/7ostf0gu?pk=g-oYgj", "https://luma.com/join/x"]);
+    expect(textOf(parseDescription(raw).nodes)).toBe(
+      "Get info at: https://luma.com/7ostf0gu?pk=g-oYgj.\nJoin (https://luma.com/join/x) now",
+    );
+  });
+
+  it("become links inside html, but not inside an existing anchor", () => {
+    expect(links('<p>see https://a.test/x</p><a href="https://b.test">https://c.test</a>')).toEqual([
+      "https://a.test/x",
+      "https://b.test",
+    ]);
+  });
+
+  it("keep a parenthesis that the url opened", () => {
+    expect(links("https://en.wikipedia.org/wiki/Foo_(bar)")).toEqual(["https://en.wikipedia.org/wiki/Foo_(bar)"]);
+  });
+
+  it("never turn another scheme into a link", () => {
+    expect(links("javascript:alert(1) ftp://x.test")).toEqual([]);
+  });
+});

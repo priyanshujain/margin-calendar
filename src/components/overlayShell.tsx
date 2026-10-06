@@ -103,11 +103,20 @@ export interface ConfirmProps {
   body: ReactNode;
   confirmLabel: string;
   busy?: boolean;
+  variant?: "danger" | "primary";
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export function Confirm({ title, body, confirmLabel, busy, onConfirm, onCancel }: ConfirmProps) {
+export function Confirm({
+  title,
+  body,
+  confirmLabel,
+  busy,
+  variant = "danger",
+  onConfirm,
+  onCancel,
+}: ConfirmProps) {
   useEscapeLayer(true, onCancel);
   const cancel = useRef<HTMLButtonElement | null>(null);
 
@@ -125,7 +134,7 @@ export function Confirm({ title, body, confirmLabel, busy, onConfirm, onCancel }
         <button
           type="button"
           className="panel-button"
-          data-variant="danger"
+          data-variant={variant}
           disabled={busy}
           onClick={onConfirm}
         >

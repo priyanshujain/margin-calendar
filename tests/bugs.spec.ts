@@ -5,7 +5,7 @@
 // the browser laid out, and each test failed before the fix that sits next to it.
 
 import { expect, test, type Page } from "@playwright/test";
-import { MIDDAY, box, columnX, drag, gridFit, hourY, openApp, settle } from "./app";
+import { MIDDAY, box, columnX, drag, gridFit, openApp, settle } from "./app";
 
 interface Point {
   x: number;
@@ -18,7 +18,7 @@ interface Point {
  */
 async function finger(page: Page) {
   const session = await page.context().newCDPSession(page);
-  const send = (type: string, points: Point[]) =>
+  const send = (type: "touchStart" | "touchMove" | "touchEnd", points: Point[]) =>
     session.send("Input.dispatchTouchEvent", {
       type,
       touchPoints: points.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),

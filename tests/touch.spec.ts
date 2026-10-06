@@ -37,7 +37,7 @@ interface Point {
  */
 async function finger(page: Page) {
   const session = await page.context().newCDPSession(page);
-  const send = (type: string, points: Point[]) =>
+  const send = (type: "touchStart" | "touchMove" | "touchEnd", points: Point[]) =>
     session.send("Input.dispatchTouchEvent", {
       type,
       touchPoints: points.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),

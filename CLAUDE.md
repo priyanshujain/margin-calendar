@@ -1,6 +1,7 @@
 ## Project Guidelines
 
 - Do not call the task done until it is fully complete and tested.
+- When the work is done and tested, run `just install` so the change can be tested manually in the installed app.
 - Do not dismiss bug as a pre-existing" issue even if it was present before your change. It does not matter, it's still your responsibility to fix it. When you see a bug, fix it. Don't ignore it.
 
 ## Coding Guidelines

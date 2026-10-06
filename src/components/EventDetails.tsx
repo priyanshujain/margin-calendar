@@ -153,11 +153,15 @@ function DetailsCard({ target, anchor }: DetailsCardProps) {
   // the block no longer is. Repositioning against a stale rectangle is worse than getting out of
   // the way. Scrolling is the agenda's list, and means the same thing.
   useEffect(() => {
+    const onScroll = (e: Event) => {
+      if (e.target instanceof Node && card.current?.contains(e.target)) return;
+      close();
+    };
     window.addEventListener("resize", close);
-    window.addEventListener("scroll", close, true);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("resize", close);
-      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [close]);
 

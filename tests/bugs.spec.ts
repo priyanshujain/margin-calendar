@@ -5,7 +5,7 @@
 // the browser laid out, and each test failed before the fix that sits next to it.
 
 import { expect, test, type Page } from "@playwright/test";
-import { box, openApp, settle } from "./app";
+import { MIDDAY, box, openApp, settle } from "./app";
 
 interface Point {
   x: number;
@@ -245,5 +245,18 @@ test.describe("account copy on the smallest phone", () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(spill).toBeLessThanOrEqual(0);
+  });
+});
+
+test.describe("cards over the grid", () => {
+  test("scrolling a long description keeps the details card open", async ({ page }) => {
+    await openApp(page, { now: MIDDAY() });
+    await page.locator(".grid-event").first().click();
+    await settle(page);
+    const card = page.locator(".details-card");
+    await expect(card).toBeVisible();
+    await page.locator(".details-body").dispatchEvent("scroll");
+    await settle(page);
+    await expect(card).toBeVisible();
   });
 });

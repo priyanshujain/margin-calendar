@@ -85,16 +85,30 @@ export function defaultRange(anchor: number, now = Date.now()): { startMs: numbe
   return { startMs: start.getTime(), endMs: end.getTime() };
 }
 
+export function durationText(startMs: number, endMs: number): string {
+  const totalMinutes = Math.max(0, Math.round((endMs - startMs) / 60_000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [
+    days && `${days} ${days === 1 ? "day" : "days"}`,
+    hours && `${hours} ${hours === 1 ? "hour" : "hours"}`,
+    minutes && `${minutes} ${minutes === 1 ? "min" : "mins"}`,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" ") : "0 mins";
+}
+
 /** The one sentence a read-only event gets for its dates. */
 export function whenText(instance: Instance): string {
   const { startMs, endMs, allDay } = instance;
   if (allDay) return `${formatRange(startMs, addDays(endMs, -1))}, all day`;
+  const duration = ` (${durationText(startMs, endMs)})`;
   if (isSameDay(startMs, endMs)) {
-    return `${formatRange(startMs, startMs)}, ${formatTime(startMs)} to ${formatTime(endMs)}`;
+    return `${formatRange(startMs, startMs)}, ${formatTime(startMs)} to ${formatTime(endMs)}${duration}`;
   }
   return (
     `${formatRange(startMs, startMs)}, ${formatTime(startMs)}` +
-    ` to ${formatRange(endMs, endMs)}, ${formatTime(endMs)}`
+    ` to ${formatRange(endMs, endMs)}, ${formatTime(endMs)}${duration}`
   );
 }
 

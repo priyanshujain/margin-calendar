@@ -6,6 +6,7 @@ import {
   attendeeTally,
   canWrite,
   defaultRange,
+  durationText,
   fromDateTime,
   monthGrid,
   monthLabel,
@@ -134,5 +135,16 @@ describe("vocabulary", () => {
     expect(attendeeTally([attendee("accepted"), attendee("declined"), attendee("needsAction")])).toBe(
       "1 of 3 accepted",
     );
+  });
+});
+
+describe("duration text", () => {
+  const min = 60_000;
+  it("reads like a person would say it", () => {
+    expect(durationText(0, 30 * min)).toBe("30 mins");
+    expect(durationText(0, 60 * min)).toBe("1 hour");
+    expect(durationText(0, 345 * min)).toBe("5 hours 45 mins");
+    expect(durationText(0, 1 * min)).toBe("1 min");
+    expect(durationText(0, 26 * 60 * min)).toBe("1 day 2 hours");
   });
 });

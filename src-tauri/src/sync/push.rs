@@ -177,6 +177,13 @@ pub fn apply_plans(conn: &Connection, rows: &[EventRow], plans: &[EditPlan]) -> 
                     let mut updated = row.clone();
                     updated.status = "cancelled".to_string();
                     write::upsert_event_dirty(conn, &updated)?;
+                } else if let (Some(master), Some(original)) =
+                    (read::event(conn, calendar_id, event_id)?, original_start.as_deref())
+                {
+                    // An occurrence that is only a rule has no row to cancel, so the rule drops it.
+                    let mut updated = master;
+                    updated.recurrence = crate::recur::exclude_occurrence(&updated.recurrence, original)?;
+                    write::upsert_event_dirty(conn, &updated)?;
                 }
                 queue(
                     conn,
@@ -365,6 +372,8 @@ pub async fn drain(store: &Store, transport: &impl Transport, deadline: Instant)
                 Ok(()) => {
                     let _ = with_conn(store, |conn| write::dequeue(conn, row.id));
                     outcome.changed = true;
+                    // A push can rewrite the entries behind it, so the rest of the batch is stale.
+                    break;
                 }
                 Err(ApiError::Offline(_)) => {
                     // Not a failure, so no attempt is counted and nothing is surfaced. The queue is
@@ -407,7 +416,9 @@ async fn push_one(
         }
         "patch" => {
             let body = payload(row)?;
-            let (event_id, etag) = resolve(transport, account_id, row).await?;
+            let Some((event_id, etag)) = resolve(transport, account_id, row).await? else {
+                return detach(store, transport, account_id, row, &body).await;
+            };
             let raw = transport
                 .events_patch(
                     account_id,
@@ -421,7 +432,10 @@ async fn push_one(
             clear(store, row)
         }
         "delete" => {
-            let (event_id, etag) = resolve(transport, account_id, row).await?;
+            let Some((event_id, etag)) = resolve(transport, account_id, row).await? else {
+                exclude(store, transport, account_id, row).await?;
+                return clear(store, row);
+            };
             transport
                 .events_delete(account_id, &row.calendar_id, &event_id, etag.as_deref())
                 .await?;
@@ -437,28 +451,86 @@ async fn push_one(
 
 /// `EditPlan::PatchInstance` carries the original start rather than an instance id because the id
 /// is Google's to give. This is where it is asked for, at push time, rather than assembled by hand.
+/// None means Google has no such instance, which past its expansion limit is every occurrence.
 async fn resolve(
     transport: &impl Transport,
     account_id: &str,
     row: &OutboxRow,
-) -> Result<(String, Option<String>), ApiError> {
+) -> Result<Option<(String, Option<String>)>, ApiError> {
     let event_id = row
         .event_id
         .clone()
         .ok_or_else(|| ApiError::Other("a queued write with no event".to_string()))?;
     let Some(original_start) = row.original_start.as_deref() else {
-        return Ok((event_id, row.etag.clone()));
+        return Ok(Some((event_id, row.etag.clone())));
     };
     let instances = transport
         .events_instances(account_id, &row.calendar_id, &event_id, original_start)
         .await?;
-    let instance = instances.into_iter().next().ok_or_else(|| {
-        ApiError::Other(format!(
-            "that occurrence of {event_id} is no longer in the series"
-        ))
-    })?;
-    let etag = row.etag.clone().or_else(|| instance.etag.clone());
-    Ok((instance.id, etag))
+    Ok(instances.into_iter().next().map(|instance| {
+        let etag = row.etag.clone().or_else(|| instance.etag.clone());
+        (instance.id, etag)
+    }))
+}
+
+/// Drops the occurrence from the master's rule with an EXDATE and lands the master Google returns.
+async fn exclude(
+    store: &Store,
+    transport: &impl Transport,
+    account_id: &str,
+    row: &OutboxRow,
+) -> Result<(), ApiError> {
+    let (master, original_start) = occurrence_of(store, row)?;
+    let recurrence = crate::recur::exclude_occurrence(&master.recurrence, &original_start)
+        .map_err(ApiError::Other)?;
+    let raw = transport
+        .events_patch(
+            account_id,
+            &row.calendar_id,
+            &master.id,
+            &model::recurrence_body(&recurrence),
+            None,
+        )
+        .await?;
+    land(store, &row.calendar_id, account_id, &raw)
+}
+
+/// An edit to an occurrence Google will not hand out becomes a one-off in its place: the occurrence
+/// is excluded from the series and a standalone event carrying the edit is created at its spot.
+/// Excluding first makes a retry safe: the EXDATE is idempotent and the insert has not happened.
+async fn detach(
+    store: &Store,
+    transport: &impl Transport,
+    account_id: &str,
+    row: &OutboxRow,
+    patch: &Value,
+) -> Result<(), ApiError> {
+    let (master, original_start) = occurrence_of(store, row)?;
+    let mut body = model::occurrence_body(&master, &original_start).map_err(ApiError::Other)?;
+    exclude(store, transport, account_id, row).await?;
+    if let (Value::Object(body), Value::Object(patch)) = (&mut body, patch) {
+        for (key, value) in patch {
+            body.insert(key.clone(), value.clone());
+        }
+    }
+    let raw = transport
+        .events_insert(account_id, &row.calendar_id, &body)
+        .await?;
+    land(store, &row.calendar_id, account_id, &raw)?;
+    with_conn(store, |conn| write::retarget(conn, row, &raw.id)).map_err(ApiError::Other)
+}
+
+fn occurrence_of(store: &Store, row: &OutboxRow) -> Result<(EventRow, String), ApiError> {
+    let event_id = row.event_id.as_deref().unwrap_or_default();
+    let original_start = row.original_start.clone().unwrap_or_default();
+    let master = with_conn(store, |conn| read::event(conn, &row.calendar_id, event_id))
+        .map_err(ApiError::Other)?
+        .ok_or_else(|| {
+            ApiError::Other(format!(
+                "that occurrence of {event_id} is no longer in the series"
+            ))
+        })?;
+    Ok((master, original_start))
 }
 
 fn payload(row: &OutboxRow) -> Result<Value, ApiError> {

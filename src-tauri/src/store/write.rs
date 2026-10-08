@@ -513,6 +513,17 @@ pub fn mark_attempt_failed(conn: &Connection, id: i64, error: &str) -> Result<()
     Ok(())
 }
 
+/// Points the other queued writes for one occurrence at the event that replaced it.
+pub fn retarget(conn: &Connection, row: &OutboxRow, event_id: &str) -> Result<(), String> {
+    conn.execute(
+        "UPDATE outbox SET event_id = ?1, original_start = NULL, etag = NULL
+         WHERE id != ?2 AND calendar_id = ?3 AND event_id = ?4 AND original_start = ?5",
+        params![event_id, row.id, row.calendar_id, row.event_id, row.original_start],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn dequeue(conn: &Connection, id: i64) -> Result<(), String> {
     conn.execute("DELETE FROM outbox WHERE id = ?1", [id])
         .map_err(|e| e.to_string())?;

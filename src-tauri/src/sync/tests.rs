@@ -26,6 +26,7 @@ struct Stub {
     deletes: Mutex<VecDeque<Result<(), ApiError>>>,
     instances: Mutex<VecDeque<Result<Vec<RawEvent>, ApiError>>>,
     calls: Mutex<Vec<String>>,
+    bodies: Mutex<Vec<serde_json::Value>>,
 }
 
 impl Stub {
@@ -109,6 +110,7 @@ impl Transport for Stub {
         async move {
             let id = body.get("id").and_then(|v| v.as_str()).unwrap_or("-");
             self.record(format!("events_insert {calendar_id} {id}"));
+            self.bodies.lock().expect("bodies").push(body.clone());
             self.writes
                 .lock()
                 .expect("writes")
@@ -122,7 +124,7 @@ impl Transport for Stub {
         _account_id: &str,
         calendar_id: &str,
         event_id: &str,
-        _body: &serde_json::Value,
+        body: &serde_json::Value,
         etag: Option<&str>,
     ) -> impl std::future::Future<Output = Result<RawEvent, ApiError>> + Send {
         async move {
@@ -130,6 +132,7 @@ impl Transport for Stub {
                 "events_patch {calendar_id} {event_id} etag={}",
                 shown(etag)
             ));
+            self.bodies.lock().expect("bodies").push(body.clone());
             self.writes
                 .lock()
                 .expect("writes")
@@ -756,6 +759,142 @@ fn a_this_occurrence_edit_goes_from_plan_to_queue_to_request() {
             "events_patch cal-a series_20260817T080000Z etag=etag-series_20260817T080000Z",
         ]
     );
+    assert!(queued(&store).is_empty());
+}
+
+/// A daily series that started in 2022, which Google stops expanding after 730 occurrences.
+fn endless_daily_series(store: &Store) {
+    with_conn(store, |conn| {
+        write::upsert_event(
+            conn,
+            &crate::store::write::EventRow {
+                id: "series".to_string(),
+                calendar_id: "cal-a".to_string(),
+                account_id: "acct".to_string(),
+                status: "confirmed".to_string(),
+                summary: "Routine".to_string(),
+                start_at: "2022-06-27T20:00:00+05:30".to_string(),
+                start_tz: Some("Asia/Kolkata".to_string()),
+                end_at: "2022-06-27T20:15:00+05:30".to_string(),
+                end_tz: Some("Asia/Kolkata".to_string()),
+                recurrence: vec!["RRULE:FREQ=DAILY".to_string()],
+                etag: Some("etag-series".to_string()),
+                ..Default::default()
+            },
+        )
+    })
+    .expect("master");
+}
+
+fn instances_on(store: &Store, day: &str) -> usize {
+    let from = write::epoch_ms(&format!("{day}T00:00:00+05:30"), false).expect("from");
+    with_conn(store, |conn| {
+        let rows = read::masters_overlapping(conn, from, from + 86_400_000)?;
+        crate::recur::expand(&rows, from, from + 86_400_000)
+    })
+    .expect("expand")
+    .len()
+}
+
+#[test]
+fn deleting_an_occurrence_google_will_not_expand_excludes_it_from_the_rule() {
+    let store = db();
+    account(&store, "acct");
+    calendar(&store, "cal-a", "acct", Some("start"));
+    endless_daily_series(&store);
+
+    let key = crate::dto::InstanceKey {
+        event_id: "series".to_string(),
+        original_start: Some("2026-10-07T20:00:00+05:30".to_string()),
+    };
+    let rows = with_conn(&store, |conn| super::series_rows(conn, &key)).expect("rows");
+    let plans = crate::recur::plan_delete(&rows, &key, crate::dto::Scope::This).expect("plan");
+    with_conn(&store, |conn| push::apply_plans(conn, &rows, &plans)).expect("apply");
+
+    assert_eq!(instances_on(&store, "2026-10-07"), 0, "gone before Google has seen it");
+    assert_eq!(instances_on(&store, "2026-10-08"), 1);
+
+    let stub = Stub::default();
+    stub.script_writes(vec![Ok(raw("series"))]);
+    let outcome = drain(&store, &stub);
+
+    assert!(outcome.error.is_none(), "{:?}", outcome.error);
+    assert_eq!(
+        stub.calls(),
+        vec![
+            "events_instances cal-a series at=2026-10-07T20:00:00+05:30",
+            "events_patch cal-a series etag=-",
+        ]
+    );
+    assert_eq!(
+        stub.bodies.lock().expect("bodies")[0]["recurrence"],
+        serde_json::json!(["RRULE:FREQ=DAILY", "EXDATE:20261007T143000Z"])
+    );
+    assert!(queued(&store).is_empty());
+}
+
+#[test]
+fn editing_an_occurrence_google_will_not_expand_detaches_it_as_a_one_off() {
+    let store = db();
+    account(&store, "acct");
+    calendar(&store, "cal-a", "acct", Some("start"));
+    endless_daily_series(&store);
+    with_conn(&store, |conn| {
+        write::enqueue(
+            conn,
+            &OutboxRow {
+                op: "patch".to_string(),
+                calendar_id: "cal-a".to_string(),
+                event_id: Some("series".to_string()),
+                original_start: Some("2026-09-20T20:00:00+05:30".to_string()),
+                scope: Some("this".to_string()),
+                payload: Some(r#"{"summary":"moved"}"#.to_string()),
+                ..Default::default()
+            },
+        )
+    })
+    .expect("enqueue");
+
+    with_conn(&store, |conn| {
+        write::enqueue(
+            conn,
+            &OutboxRow {
+                op: "patch".to_string(),
+                calendar_id: "cal-a".to_string(),
+                event_id: Some("series".to_string()),
+                original_start: Some("2026-09-20T20:00:00+05:30".to_string()),
+                scope: Some("this".to_string()),
+                payload: Some(r#"{"summary":"moved again"}"#.to_string()),
+                ..Default::default()
+            },
+        )
+    })
+    .expect("enqueue");
+
+    let stub = Stub::default();
+    stub.script_writes(vec![Ok(raw("series")), Ok(raw("one-off")), Ok(raw("one-off"))]);
+    let outcome = drain(&store, &stub);
+
+    assert!(outcome.error.is_none(), "{:?}", outcome.error);
+    assert_eq!(
+        stub.calls(),
+        vec![
+            "events_instances cal-a series at=2026-09-20T20:00:00+05:30",
+            "events_patch cal-a series etag=-",
+            "events_insert cal-a -",
+            // The second edit lands on the one-off rather than detaching the occurrence again.
+            "events_patch cal-a one-off etag=-",
+        ]
+    );
+    let bodies = stub.bodies.lock().expect("bodies");
+    assert_eq!(
+        bodies[0]["recurrence"],
+        serde_json::json!(["RRULE:FREQ=DAILY", "EXDATE:20260920T143000Z"])
+    );
+    assert_eq!(bodies[1]["summary"], "moved");
+    assert_eq!(bodies[1]["start"]["dateTime"], "2026-09-20T20:00:00+05:30");
+    assert_eq!(bodies[1]["end"]["dateTime"], "2026-09-20T20:15:00+05:30");
+    assert_eq!(bodies[1]["start"]["timeZone"], "Asia/Kolkata");
     assert!(queued(&store).is_empty());
 }
 

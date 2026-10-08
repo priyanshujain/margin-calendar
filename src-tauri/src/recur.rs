@@ -599,6 +599,24 @@ pub fn truncate_recurrence(recurrence: &[String], until: &str) -> Vec<String> {
     out
 }
 
+/// The master's lines with one occurrence excluded, named by its original start. This is how a
+/// single occurrence goes when Google has no instance to delete: it expands an endless series only
+/// 730 occurrences out, so a daily series is out of instances after two years.
+pub fn exclude_occurrence(recurrence: &[String], original_start: &str) -> Result<Vec<String>, String> {
+    let line = if original_start.len() == 10 {
+        let date = NaiveDate::parse_from_str(original_start, "%Y-%m-%d").map_err(|e| e.to_string())?;
+        format!("EXDATE;VALUE=DATE:{}", date.format("%Y%m%d"))
+    } else {
+        let at = DateTime::parse_from_rfc3339(original_start).map_err(|e| e.to_string())?;
+        format!("EXDATE:{}", at.with_timezone(&Tz::UTC).format("%Y%m%dT%H%M%SZ"))
+    };
+    let mut out = recurrence.to_vec();
+    if !out.contains(&line) {
+        out.push(line);
+    }
+    Ok(out)
+}
+
 fn starts_with_key(part: &str, key: &str) -> bool {
     part.split_once('=')
         .is_some_and(|(name, _)| name.trim().eq_ignore_ascii_case(key))

@@ -1,7 +1,7 @@
 // Conversions between Google's shape, the store's rows and the IPC DTOs. Nothing here reaches the
 // network or the database, so every one of these is a pure function the tests can lean on.
 
-use chrono::{Local, NaiveDate, TimeZone};
+use chrono::{DateTime, Local, NaiveDate, TimeZone};
 use serde_json::{json, Map, Value};
 
 use crate::dto::{EventDraft, EventPatch, Instance};
@@ -165,6 +165,37 @@ pub fn patch_body(patch: &EventPatch, all_day: bool, start_tz: Option<&str>, end
         );
     }
     Value::Object(body)
+}
+
+/// A one-off copy of a series' occurrence at `original_start`, keeping the master's length.
+pub fn occurrence_body(master: &EventRow, original_start: &str) -> Result<Value, String> {
+    let (start, end) = if original_start.len() == 10 {
+        let day = |value: &str| NaiveDate::parse_from_str(value, "%Y-%m-%d").map_err(|e| e.to_string());
+        let span = day(&master.end_at)? - day(&master.start_at)?;
+        let start = day(original_start)?;
+        (start.to_string(), (start + span).to_string())
+    } else {
+        let at = |value: &str| DateTime::parse_from_rfc3339(value).map_err(|e| e.to_string());
+        let span = at(&master.end_at)? - at(&master.start_at)?;
+        let start = at(original_start)?;
+        (start.to_rfc3339(), (start + span).to_rfc3339())
+    };
+    let draft = EventDraft {
+        calendar_id: master.calendar_id.clone(),
+        summary: master.summary.clone(),
+        description: master.description.clone(),
+        location: master.location.clone(),
+        start,
+        end,
+        all_day: master.all_day,
+        recurrence: Vec::new(),
+        color_id: master.color_id.clone(),
+    };
+    let mut body = draft_body(&draft, "", master.start_tz.as_deref(), master.end_tz.as_deref());
+    if let Some(object) = body.as_object_mut() {
+        object.remove("id");
+    }
+    Ok(body)
 }
 
 pub fn recurrence_body(recurrence: &[String]) -> Value {
